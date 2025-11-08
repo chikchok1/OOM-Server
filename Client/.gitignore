@@ -1,3 +1,0 @@
-
-//서버 폴더에서 LoginServer 실행후 ClassReservation에서 Main패키지의 Main.java 실행하면 됩니다.
-//혹시 안될경우 Common 폴더 clean and build 후 Server폴더 Clean and build 후에 Client 폴더 Clean and build 하면 클라이언트 target 폴더에 .jar파일 생성됩니다.
