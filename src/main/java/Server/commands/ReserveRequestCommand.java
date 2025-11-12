@@ -16,29 +16,48 @@ public class ReserveRequestCommand implements Command {
 
     @Override
     public String execute(String[] params, BufferedReader in, PrintWriter out) throws IOException {
-        // 파라미터 개수 체크 (8개: 학생수 추가)
+        // ✅ 파라미터 개수 체크 (9개: 날짜 추가)
         System.out.println("[ReserveRequest] 받은 파라미터 개수: " + params.length);
-        if (params.length != 8) {
-            System.err.println("[ReserveRequest] 파라미터 개수 오류: " + params.length + ", 기대값: 8");
+        if (params.length != 9) {
+            System.err.println("[ReserveRequest] 파라미터 개수 오류: " + params.length + ", 기대값: 9");
             return "INVALID_RESERVE_FORMAT";
         }
 
         String reserveName = params[1];
         String room = params[2];
-        String day = params[3];
-        String time = params[4];
-        String purpose = params[5];
-        String role = params[6];
+        String dateString = params[3];  // ✅ 날짜 추가 (yyyy-MM-dd)
+        String day = params[4];
+        String time = params[5];
+        String purpose = params[6];
+        String role = params[7];
         int studentCount;
         
         // 학생 수 파싱
         try {
-            studentCount = Integer.parseInt(params[7]);
-            System.out.println(String.format("[ReserveRequest] 예약 요청: %s, %s, %s, %s, 인원: %d명",
-                reserveName, room, day, time, studentCount));
+            studentCount = Integer.parseInt(params[8]);  // ✅ 인덱스 8로 변경
+            System.out.println(String.format("[ReserveRequest] 예약 요청: %s, %s, %s(%s), %s, 인원: %d명",
+                reserveName, room, dateString, day, time, studentCount));
         } catch (NumberFormatException e) {
-            System.err.println("[ReserveRequest] 학생 수 파싱 오류: " + params[7]);
+            System.err.println("[ReserveRequest] 학생 수 파싱 오류: " + params[8]);
             return "INVALID_STUDENT_COUNT";
+        }
+        
+        // ✅ 최소 하루 전 예약 검증
+        try {
+            java.time.LocalDate selectedDate = java.time.LocalDate.parse(dateString);
+            java.time.LocalDate today = java.time.LocalDate.now();
+            java.time.LocalDate tomorrow = today.plusDays(1);
+            
+            if (selectedDate.isBefore(tomorrow)) {
+                System.out.println(String.format(
+                    "[ReserveRequest] 예약 날짜 오류: %s는 최소 하루 전에 예약해야 함 (오늘: %s)",
+                    selectedDate, today
+                ));
+                return "RESERVE_DATE_TOO_EARLY";
+            }
+        } catch (java.time.format.DateTimeParseException e) {
+            System.err.println("[ReserveRequest] 날짜 형식 오류: " + dateString);
+            return "INVALID_DATE_FORMAT";
         }
 
         // Singleton으로 수용 인원 체크
@@ -53,20 +72,20 @@ public class ReserveRequestCommand implements Command {
         synchronized (FILE_LOCK) {
             Classroom classroom = manager.getClassroom(room);
             
-            //  해당 시간대에 이미 예약이 존재하는지 체크 
-            boolean isAlreadyReserved = isTimeSlotReserved(room, day, time);
+            //  ✅ 날짜 기반으로 해당 시간대에 이미 예약이 존재하는지 체크 
+            boolean isAlreadyReserved = isTimeSlotReserved(room, dateString, time);
             
             if (isAlreadyReserved) {
                 System.out.println(String.format(
                     "[ReserveRequest] 이미 예약된 시간: %s %s %s",
-                    room, day, time
+                    room, dateString, time
                 ));
                 return "RESERVE_CONFLICT";
             }
             
             System.out.println(String.format(
                 "[ReserveRequest] 예약 가능: %s %s %s - 요청 인원: %d명",
-                room, day, time, studentCount
+                room, dateString, time, studentCount
             ));
 
             File file = new File(BASE_DIR + "/ReservationRequest.txt");
@@ -74,9 +93,9 @@ public class ReserveRequestCommand implements Command {
 
             // 예약 저장
             try (BufferedWriter writer = new BufferedWriter(new FileWriter(file, true))) {
-                // 학생 수 포함하여 저장
-                String data = String.format("%s,%s,%s,%s,%s,%s,대기,%d",
-                    reserveName, room, day, time, purpose, role, studentCount);
+                // ✅ 날짜 및 학생 수 포함하여 저장 (9개 필드)
+                String data = String.format("%s,%s,%s,%s,%s,%s,%s,대기,%d",
+                    reserveName, room, dateString, day, time, purpose, role, studentCount);
                 writer.write(data);
                 writer.newLine();
                 
@@ -91,10 +110,10 @@ public class ReserveRequestCommand implements Command {
     }
     
     /**
-     * 특정 시간대에 이미 예약이 존재하는지 체크 (ON/OFF 방식)
+     * ✅ 특정 날짜/시간대에 이미 예약이 존재하는지 체크 (날짜 기반)
      * 대기 중이거나 승인된 예약이 있으면 true 반환
      */
-    private boolean isTimeSlotReserved(String room, String day, String time) {
+    private boolean isTimeSlotReserved(String room, String dateString, String time) {
         // 1. 대기 중인 예약 체크
         File pendingFile = new File(BASE_DIR + "/ReservationRequest.txt");
         if (pendingFile.exists()) {
@@ -102,10 +121,12 @@ public class ReserveRequestCommand implements Command {
                 String line;
                 while ((line = reader.readLine()) != null) {
                     String[] parts = line.split(",");
-                    if (parts.length >= 4 &&
+                    // 형식: name,room,dateString,day,time,purpose,role,status,studentCount (9개)
+                    if (parts.length >= 9 &&
                         parts[1].trim().equals(room.trim()) &&
-                        parts[2].trim().equals(day.trim()) &&
-                        parts[3].trim().equals(time.trim())) {
+                        parts[2].trim().equals(dateString.trim()) &&
+                        parts[4].trim().equals(time.trim())) {
+                        System.out.println("[예약체크] 대기 중 예약 발견: " + line);
                         return true; // 대기 중인 예약 존재
                     }
                 }
@@ -128,13 +149,15 @@ public class ReserveRequestCommand implements Command {
                 String line;
                 while ((line = reader.readLine()) != null) {
                     String[] parts = line.split(",");
-                    if (parts.length >= 7 &&
+                    // 형식: name,room,dateString,day,time,purpose,role,status,studentCount (9개)
+                    if (parts.length >= 9 &&
                         parts[1].trim().equals(room.trim()) &&
-                        parts[2].trim().equals(day.trim()) &&
-                        parts[3].trim().equals(time.trim())) {
+                        parts[2].trim().equals(dateString.trim()) &&
+                        parts[4].trim().equals(time.trim())) {
                         
-                        String status = parts[6].trim();
+                        String status = parts[7].trim();
                         if (status.equals("예약됨") || status.equals("승인")) {
+                            System.out.println("[예약체크] 승인된 예약 발견: " + line);
                             return true; // 승인된 예약 존재
                         }
                     }

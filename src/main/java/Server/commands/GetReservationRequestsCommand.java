@@ -68,20 +68,37 @@ public class GetReservationRequestsCommand implements Command {
                         }
                         
                         out.println(String.join(",", id, time, day, room, userName, studentCount));
-                    } else if (file.getName().equals("ReservationRequest.txt") && partsLine.length >= 4) {
+                    } else if (file.getName().equals("ReservationRequest.txt") && partsLine.length >= 5) {
                         String name2 = partsLine[0].trim();
                         String room = partsLine[1].trim();
-                        String day = partsLine[2].trim();
-                        String time = partsLine[3].trim();
+                        String dateOrDay = "";
+                        String day = "";
+                        String time = "";
                         String id2 = userDAO.getUserIdByName(name2);
                         
-                        // 학생 수 추출 (필드 7번째, 인덱스 7)
+                        // ✅ 날짜 필드 유무에 따라 분기 처리
                         String studentCount = "1"; // 기본값
-                        if (partsLine.length >= 8) {
-                            studentCount = partsLine[7].trim();
+                        
+                        if (partsLine.length >= 9) {
+                            // 새 형식: 이름,방,날짜,요일,시간,목적,권한,상태,학생수
+                            dateOrDay = partsLine[2].trim();  // 날짜 (yyyy-MM-dd)
+                            day = partsLine[3].trim();        // 요일
+                            time = partsLine[4].trim();
+                            if (partsLine.length >= 9) {
+                                studentCount = partsLine[8].trim();
+                            }
+                        } else {
+                            // 구 형식: 이름,방,요일,시간,목적,권한,상태,학생수
+                            dateOrDay = partsLine[2].trim();  // 요일
+                            day = dateOrDay;
+                            time = partsLine[3].trim();
+                            if (partsLine.length >= 8) {
+                                studentCount = partsLine[7].trim();
+                            }
                         }
                         
-                        out.println(String.join(",", id2, time, day, room, name2, studentCount));
+                        // ✅ 날짜 정보를 포함하여 전송 (dateOrDay를 day 위치에)
+                        out.println(String.join(",", id2, time, dateOrDay, room, name2, studentCount));
                     }
                 }
             } catch (IOException e) {

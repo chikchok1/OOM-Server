@@ -86,6 +86,10 @@ public class CommandFactory {
                 new CheckRoomStatusCommand(BASE_DIR);
             case "GET_RESERVED_COUNT" ->
                 new GetReservedCountCommand(BASE_DIR);
+            case "GET_RESERVED_COUNT_BY_DATE" ->
+                new GetReservedCountByDateCommand(BASE_DIR);
+            case "VIEW_WEEKLY_RESERVATION" ->
+                new ViewWeeklyReservationCommand(BASE_DIR, FILE_LOCK);
             case "GET_ROOM_INFO" ->
                 new GetRoomInfoCommand();
             case "GET_CLASSROOMS" ->

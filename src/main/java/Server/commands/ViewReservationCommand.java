@@ -45,7 +45,8 @@ public class ViewReservationCommand implements Command {
                         String line;
                         while ((line = reader.readLine()) != null) {
                             String[] tokens = line.split(",");
-                            if (tokens.length < 7) {
+                            // ✅ 9개 필드로 수정 (name,room,date,day,time,purpose,role,status,studentCount)
+                            if (tokens.length < 9) {
                                 continue;
                             }
 
@@ -66,7 +67,8 @@ public class ViewReservationCommand implements Command {
                         String line;
                         while ((line = reader.readLine()) != null) {
                             String[] tokens = line.split(",");
-                            if (tokens.length < 7) {
+                            // ✅ 9개 필드로 수정
+                            if (tokens.length < 9) {
                                 continue;
                             }
 

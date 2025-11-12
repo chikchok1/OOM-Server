@@ -47,7 +47,8 @@ public class ViewAllReservationsCommand implements Command {
                 String line;
                 while ((line = reader.readLine()) != null) {
                     String[] lineParts = line.split(",");
-                    if (lineParts.length >= 7) {
+                    // ✅ 9개 필드로 수정
+                    if (lineParts.length >= 9) {
                         String fileUserName = lineParts[0];
                         String room = lineParts[1];
                         String day = lineParts[2];
