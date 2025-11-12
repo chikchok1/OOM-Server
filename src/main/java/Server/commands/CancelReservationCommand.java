@@ -1,14 +1,5 @@
-/*
- * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
- * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
- */
 package Server.commands;
 
-/**
- *
- * @author YangJinWon
- */
-import common.manager.ClassroomManager;
 import java.io.*;
 
 public class CancelReservationCommand implements Command {
@@ -23,15 +14,17 @@ public class CancelReservationCommand implements Command {
 
     @Override
     public String execute(String[] params, BufferedReader in, PrintWriter out) throws IOException {
-        if (params.length != 6) {
+        //  날짜 포함해서 총 7개 파라미터로 변경
+        if (params.length != 7) {
             return "INVALID_CANCEL_FORMAT";
         }
 
         String cancelUserId = params[1].trim();
-        String time = params[2].trim();
-        String day = params[3].trim();
-        String room = params[4].trim();
-        String userName = params[5].trim();
+        String day = params[2].trim();      // 요일
+        String date = params[3].trim();     // 날짜
+        String time = params[4].trim();     // 교시
+        String room = params[5].trim();
+        String userName = params[6].trim();
 
         synchronized (FILE_LOCK) {
             String targetFile = (room.equals("908호") || room.equals("912호")
@@ -42,33 +35,26 @@ public class CancelReservationCommand implements Command {
             File inputFile = new File(targetFile);
             File tempFile = new File(targetFile + ".tmp");
             boolean deleted = false;
+            int canceledStudentCount = 0;
 
-            int canceledStudentCount = 0;  // 취소된 예약의 학생 수
-            
-            try (BufferedReader reader = new BufferedReader(new FileReader(inputFile)); BufferedWriter writer = new BufferedWriter(new FileWriter(tempFile))) {
+            try (BufferedReader reader = new BufferedReader(new FileReader(inputFile));
+                 BufferedWriter writer = new BufferedWriter(new FileWriter(tempFile))) {
                 String line;
                 while ((line = reader.readLine()) != null) {
                     String[] lineParts = line.split(",");
-                    if (lineParts.length >= 7
-                            && lineParts[0].trim().equals(userName.trim())
-                            && lineParts[1].trim().equals(room.trim())
-                            && lineParts[2].trim().equals(day.trim())
-                            && lineParts[3].trim().equals(time.trim())) {
-                        
-                        // 학생 수 추출 (필드 7번째, 인덱스 7)
-                        if (lineParts.length >= 8) {
-                            try {
-                                canceledStudentCount = Integer.parseInt(lineParts[7].trim());
-                                System.out.println("[DEBUG] 취소할 예약의 학생 수: " + canceledStudentCount + "명");
-                            } catch (NumberFormatException e) {
-                                canceledStudentCount = 1;
-                                System.err.println("[WARN] 학생 수 파싱 실패, 기본값 1 사용");
-                            }
-                        } else {
+                    if (lineParts.length >= 9
+                            && lineParts[0].trim().equals(userName)
+                            && lineParts[1].trim().equals(room)
+                            && lineParts[2].trim().equals(date)
+                            && lineParts[3].trim().equals(day)
+                            && lineParts[4].trim().equals(time)) {
+
+                        // 학생 수 추출
+                        try {
+                            canceledStudentCount = Integer.parseInt(lineParts[8].trim());
+                        } catch (NumberFormatException e) {
                             canceledStudentCount = 1;
-                            System.out.println("[DEBUG] 구 버전 데이터, 기본값 1 사용");
                         }
-                        
                         deleted = true;
                         System.out.println("[DEBUG] 예약 취소: " + line);
                         continue;
@@ -76,17 +62,12 @@ public class CancelReservationCommand implements Command {
                     writer.write(line);
                     writer.newLine();
                 }
-            } catch (IOException e) {
-                return "CANCEL_FAILED_IO_ERROR";
             }
 
             if (deleted) {
                 inputFile.delete();
                 tempFile.renameTo(inputFile);
-                
-                // ❌ 수용 인원 복구 제거 - 실시간 계산 방식 사용
                 System.out.println("[취소] " + room + " " + day + " " + time + " - 학생 수: " + canceledStudentCount + "명");
-                
                 return "CANCEL_SUCCESS";
             } else {
                 tempFile.delete();
