@@ -63,13 +63,13 @@ public class LoginServer {
                         System.err.println("클라이언트 처리 중 IOException: " + e.getMessage());
                     } finally {
                         if (userId != null) {
-                            synchronized (LoginServer.class) {
-                                loggedInUsers.remove(userId);
-                                currentClients.decrementAndGet();
-                                System.out.println(userId + " 로그아웃 처리됨");
-                                System.out.println("현재 로그인 중인 사용자: " + loggedInUsers.keySet());
-                                System.out.println("현재 접속자 수: " + currentClients.get());
-                            }
+                        synchronized (LoginServer.class) {
+                            loggedInUsers.remove(userId);
+                            currentClients.decrementAndGet();
+                            System.out.println(userId + " 로그아웃 처리됨");
+                            System.out.println("현재 로그인 중인 사용자: " + loggedInUsers.keySet());
+                            System.out.println("현재 접속자 수: " + currentClients.get());
+                        }
                         }
                         try {
                             if (socket != null && !socket.isClosed()) {

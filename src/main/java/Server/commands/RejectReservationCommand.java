@@ -1,13 +1,5 @@
-/*
- * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
- * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
- */
 package Server.commands;
 
-/**
- *
- * @author YangJinWon
- */
 import Server.UserDAO;
 import java.io.*;
 
@@ -15,9 +7,8 @@ public class RejectReservationCommand implements Command {
     private final String BASE_DIR;
     private final Object FILE_LOCK;
     private final UserDAO userDAO;
-    private final String currentUserId; // 🔥 추가: 현재 로그인한 조교 ID
+    private final String currentUserId;
 
-    //  생성자에 currentUserId 추가
     public RejectReservationCommand(String baseDir, Object fileLock, UserDAO userDAO, String currentUserId) {
         this.BASE_DIR = baseDir;
         this.FILE_LOCK = fileLock;
@@ -32,7 +23,6 @@ public class RejectReservationCommand implements Command {
             return "INVALID_REJECT_FORMAT";
         }
 
-        //  수정: currentUserId로 권한 확인 (params[1]이 아님!)
         System.out.println("[DEBUG] REJECT_RESERVATION - 권한 확인 userId: " + currentUserId);
         
         if (currentUserId == null || !userDAO.authorizeAccess(currentUserId)) {
@@ -47,6 +37,9 @@ public class RejectReservationCommand implements Command {
         String name2 = params[5];
 
         System.out.println("[DEBUG] 거절 처리: 요청자=" + name2 + ", 방=" + room + ", 시간=" + time);
+
+        boolean isChangeRequest = false;
+        String date = "";  // 날짜 정보 저장
 
         synchronized (FILE_LOCK) {
             File[] targets = {
@@ -73,9 +66,12 @@ public class RejectReservationCommand implements Command {
                         if (file.getName().equals("ReservationRequest.txt") && tokens.length >= 4 &&
                             tokens[0].trim().equals(name2.trim()) &&
                             tokens[1].trim().equals(room.trim()) &&
-                            tokens[2].trim().equals(day.trim()) &&
-                            tokens[3].trim().equals(time.trim())) {
+                            tokens[3].trim().equals(day.trim()) &&
+                            tokens[4].trim().equals(time.trim())) {
                             removed = true;
+                            if (tokens.length >= 3) {
+                                date = tokens[2].trim();  // 날짜 저장
+                            }
                             System.out.println("[DEBUG] ReservationRequest 삭제: " + line);
                             continue;
                         } 
@@ -87,6 +83,8 @@ public class RejectReservationCommand implements Command {
                                   tokens[3].trim().equals(room.trim()) &&
                                   tokens[4].trim().equals(name2.trim())) {
                             removed = true;
+                            isChangeRequest = true;
+                            date = tokens[2].trim();  // 날짜 저장
                             System.out.println("[DEBUG] ChangeRequest 삭제: " + line);
                             continue;
                         }
@@ -100,6 +98,15 @@ public class RejectReservationCommand implements Command {
             }
 
             if (removed) {
+                // 🔔 Observer 패턴: 예약 거절 알림 (로그로 확인)
+                String notificationType = isChangeRequest ? "CHANGE_REJECTED" : "REJECTED";
+                String message = isChangeRequest 
+                    ? String.format("%s %s(%s) %s 예약 변경이 거절되었습니다.", room, date, day, time)
+                    : String.format("%s %s(%s) %s 예약이 거절되었습니다.", room, date, day, time);
+                
+                System.out.println("[Observer 패턴] " + id + "에게 알림 전송: " + message);
+                System.out.println("[Observer 패턴] 알림 유형: " + notificationType);
+                
                 System.out.println("[DEBUG] 거절 처리 완료");
                 return "REJECT_SUCCESS";
             } else {

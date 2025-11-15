@@ -16,10 +16,10 @@ public class ReserveRequestCommand implements Command {
 
     @Override
     public String execute(String[] params, BufferedReader in, PrintWriter out) throws IOException {
-        // ✅ 파라미터 개수 체크 (9개: 날짜 추가)
+        // ✅ 파라미터 개수 체크 (10개: 날짜 + userId 추가)
         System.out.println("[ReserveRequest] 받은 파라미터 개수: " + params.length);
-        if (params.length != 9) {
-            System.err.println("[ReserveRequest] 파라미터 개수 오류: " + params.length + ", 기대값: 9");
+        if (params.length != 10) {
+            System.err.println("[ReserveRequest] 파라미터 개수 오류: " + params.length + ", 기대값: 10");
             return "INVALID_RESERVE_FORMAT";
         }
 
@@ -31,6 +31,7 @@ public class ReserveRequestCommand implements Command {
         String purpose = params[6];
         String role = params[7];
         int studentCount;
+        String userId = params[9];  // ✅ 사용자 ID 추가
         
         // 학생 수 파싱
         try {
@@ -93,9 +94,9 @@ public class ReserveRequestCommand implements Command {
 
             // 예약 저장
             try (BufferedWriter writer = new BufferedWriter(new FileWriter(file, true))) {
-                // ✅ 날짜 및 학생 수 포함하여 저장 (9개 필드)
-                String data = String.format("%s,%s,%s,%s,%s,%s,%s,대기,%d",
-                    reserveName, room, dateString, day, time, purpose, role, studentCount);
+                // ✅ 날짜, 학생 수, 사용자 ID 포함하여 저장 (10개 필드)
+                String data = String.format("%s,%s,%s,%s,%s,%s,%s,대기,%d,%s",
+                    reserveName, room, dateString, day, time, purpose, role, studentCount, userId);
                 writer.write(data);
                 writer.newLine();
                 
@@ -121,7 +122,7 @@ public class ReserveRequestCommand implements Command {
                 String line;
                 while ((line = reader.readLine()) != null) {
                     String[] parts = line.split(",");
-                    // 형식: name,room,dateString,day,time,purpose,role,status,studentCount (9개)
+                    // 형식: name,room,dateString,day,time,purpose,role,status,studentCount,userId (10개)
                     if (parts.length >= 9 &&
                         parts[1].trim().equals(room.trim()) &&
                         parts[2].trim().equals(dateString.trim()) &&
@@ -149,7 +150,7 @@ public class ReserveRequestCommand implements Command {
                 String line;
                 while ((line = reader.readLine()) != null) {
                     String[] parts = line.split(",");
-                    // 형식: name,room,dateString,day,time,purpose,role,status,studentCount (9개)
+                    // 형식: name,room,dateString,day,time,purpose,role,status,studentCount,userId (10개)
                     if (parts.length >= 9 &&
                         parts[1].trim().equals(room.trim()) &&
                         parts[2].trim().equals(dateString.trim()) &&

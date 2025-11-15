@@ -98,6 +98,10 @@ public class CommandFactory {
                 new GetLabsCommand();
             case "UPDATE_ROOM_CAPACITY" ->
                 new UpdateRoomCapacityCommand(userDAO, currentUserId);
+            case "VIEW_APPROVED_RESERVATIONS" ->
+                new ViewApprovedReservationsCommand(BASE_DIR, userDAO, currentUserId);
+            case "CHANGE_RESERVATION_FULL" ->
+                new ChangeReservationFullCommand(BASE_DIR, FILE_LOCK);
             default ->
                 null;
         };

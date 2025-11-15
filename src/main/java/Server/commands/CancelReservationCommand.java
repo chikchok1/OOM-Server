@@ -42,13 +42,29 @@ public class CancelReservationCommand implements Command {
                 String line;
                 while ((line = reader.readLine()) != null) {
                     String[] lineParts = line.split(",");
-                    if (lineParts.length >= 9
-                            && lineParts[0].trim().equals(userName)
-                            && lineParts[1].trim().equals(room)
-                            && lineParts[2].trim().equals(date)
-                            && lineParts[3].trim().equals(day)
-                            && lineParts[4].trim().equals(time)) {
-
+                    // ✅ 새 형식 (10개 필드) 또는 구 형식 (9개 필드) 모두 지원
+                    boolean isNewFormat = lineParts.length >= 10;
+                    boolean isMatch = false;
+                    
+                    if (isNewFormat) {
+                        // 새 형식: 이름,방,날짜,요일,시간,목적,권한,상태,학생수,userId
+                        String fileUserId = lineParts[9].trim();
+                        isMatch = lineParts.length >= 10
+                                && (lineParts[0].trim().equals(userName) || fileUserId.equals(cancelUserId))
+                                && lineParts[1].trim().equals(room)
+                                && lineParts[2].trim().equals(date)
+                                && lineParts[3].trim().equals(day)
+                                && lineParts[4].trim().equals(time);
+                    } else if (lineParts.length >= 9) {
+                        // 구 형식: 이름,방,날짜,요일,시간,목적,권한,상태,학생수
+                        isMatch = lineParts[0].trim().equals(userName)
+                                && lineParts[1].trim().equals(room)
+                                && lineParts[2].trim().equals(date)
+                                && lineParts[3].trim().equals(day)
+                                && lineParts[4].trim().equals(time);
+                    }
+                    
+                    if (isMatch) {
                         // 학생 수 추출
                         try {
                             canceledStudentCount = Integer.parseInt(lineParts[8].trim());

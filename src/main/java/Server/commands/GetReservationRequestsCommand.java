@@ -66,6 +66,9 @@ public class GetReservationRequestsCommand implements Command {
                         if (partsLine.length >= 11) {
                             studentCount = partsLine[10].trim();
                         }
+                        else if (partsLine.length == 10) {
+    studentCount = partsLine[9].trim(); // 구버전 호환
+                        }
                         
                         out.println(String.join(",", id, time, day, room, userName, studentCount));
                     } else if (file.getName().equals("ReservationRequest.txt") && partsLine.length >= 5) {

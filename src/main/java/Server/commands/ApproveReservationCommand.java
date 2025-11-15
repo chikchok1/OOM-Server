@@ -1,9 +1,11 @@
 package Server.commands;
 
 import Server.UserDAO;
+import common.manager.ClassroomManager;
 import java.io.*;
 
 public class ApproveReservationCommand implements Command {
+
     private final String BASE_DIR;
     private final Object FILE_LOCK;
     private final UserDAO userDAO;
@@ -24,23 +26,25 @@ public class ApproveReservationCommand implements Command {
         }
 
         System.out.println("APPROVE_RESERVATION - 권한 확인 userId: " + currentUserId);
-        
+
+        // TA 또는 관리자 권한 확인
         if (currentUserId == null || !userDAO.authorizeAccess(currentUserId)) {
             System.err.println("[ERROR] 권한 없음: " + currentUserId);
             return "ACCESS_DENIED";
         }
 
-        String id = params[1].trim();      
+        // 파라미터
+        String userId = params[1].trim();      // 예약자 ID
         String time = params[2].trim();
-        String dateString = params[3].trim();  // 날짜 (2025-11-14)
+        String date = params[3].trim();
         String room = params[4].trim();
-        String name2 = params[5].trim();
+        String requesterName = params[5].trim();
 
-        System.out.println("승인 처리: 요청자=" + name2 + ", 방=" + room + ", 날짜=" + dateString + ", 시간=" + time);
+        System.out.println("승인 처리: 요청자=" + requesterName + ", ID=" + userId + ", 방=" + room + ", 날짜=" + date + ", 시간=" + time);
 
         synchronized (FILE_LOCK) {
-            String 목적 = "", 권한 = "", day = "";
-            int studentCount = 0;  
+            String purpose = "", role = "", day = "";
+            int studentCount = 0;
             String originalTime = "", originalDay = "", originalRoom = "";
             boolean found = false;
             boolean isChangeRequest = false;
@@ -59,6 +63,7 @@ public class ApproveReservationCommand implements Command {
                 File temp = new File(BASE_DIR + "/temp_" + file.getName());
                 try (BufferedReader reader = new BufferedReader(new FileReader(file));
                      BufferedWriter writer = new BufferedWriter(new FileWriter(temp))) {
+
                     String line;
                     while ((line = reader.readLine()) != null) {
                         String[] tokens = line.split(",");
@@ -68,104 +73,71 @@ public class ApproveReservationCommand implements Command {
                             continue;
                         }
 
-                        // ReservationRequest 처리 (✅ 날짜 필드 추가)
+                        // ✅ ReservationRequest 처리
                         if (file.getName().equals("ReservationRequest.txt") && tokens.length >= 7 &&
-                            tokens[0].trim().equals(name2.trim()) &&
+                            tokens[0].trim().equals(requesterName.trim()) &&
                             tokens[1].trim().equals(room.trim())) {
-                            
-                            // ✅ 날짜 필드가 있는 경우 (9개 필드)
-                            String fileDate = "";
-                            String fileDay = "";
-                            String fileTime = "";
-                            
-                            if (tokens.length >= 9) {
-                                // 새 형식: 이름,방,날짜,요일,시간,목적,권한,상태,학생수
+
+                            String fileDate = "", fileDay = "", fileTime = "";
+                            if (tokens.length >= 10) {
                                 fileDate = tokens[2].trim();
                                 fileDay = tokens[3].trim();
                                 fileTime = tokens[4].trim();
-                            } else {
-                                // 구 형식: 이름,방,요일,시간,목적,권한,상태,학생수
-                                fileDay = tokens[2].trim();
-                                fileTime = tokens[3].trim();
                             }
-                            
-                            // ✅ 날짜로 매칭
-                            boolean dateMatch = false;
-                            if (!fileDate.isEmpty() && fileDate.equals(dateString.trim())) {
-                                dateMatch = true;  // 날짜로 매칭
-                            }
-                            
-                            if (dateMatch && fileTime.equals(time.trim())) {
-                                // 요일 정보 저장
-                                day = fileDay;
-                                
-                                if (tokens.length >= 9) {
-                                    // 새 형식
-                                    목적 = tokens[5].trim();
-                                    권한 = tokens[6].trim();
-                                    try {
-                                        studentCount = Integer.parseInt(tokens[8].trim());
-                                        System.out.println("[학생 수 추출] " + studentCount + "명");
-                                    } catch (NumberFormatException e) {
-                                        studentCount = 1;
-                                        System.err.println("학생 수 파싱 실패, 기본값 1 사용");
-                                    }
-                                } else {
-                                    // 구 형식
-                                    목적 = tokens[4].trim();
-                                    권한 = tokens[5].trim();
-                                    if (tokens.length >= 8) {
-                                        try {
-                                            studentCount = Integer.parseInt(tokens[7].trim());
-                                        } catch (NumberFormatException e) {
-                                            studentCount = 1;
-                                        }
-                                    } else {
-                                        studentCount = 1;
-                                    }
-                                }
+
+                            boolean dateMatch = !fileDate.isEmpty() && fileDate.equals(date.trim());
+                            boolean timeMatch = fileTime.equals(time.trim());
+
+                            if (dateMatch && timeMatch) {
                                 found = true;
-                                System.out.println("[ReservationRequest 찾음] " + line);
-                                if (tokens.length >= 9) {
-                                    System.out.println("[승인] " + room + " " + fileDate + " " + fileDay + " - 학생 수: " + studentCount + "명");
+                                day = fileDay;
+                                purpose = tokens[5].trim();
+                                role = tokens[6].trim();
+
+                                try {
+                                    studentCount = Integer.parseInt(tokens[8].trim());
+                                } catch (NumberFormatException e) {
+                                    studentCount = 1;
                                 }
-                                continue;
+
+                                System.out.println("[ReservationRequest 찾음] " + line);
+                                continue; // 승인 항목은 원본 파일에서 제거
                             }
                         }
 
-                        // ChangeRequest 처리
+                        // ✅ ChangeRequest 처리
                         if (file.getName().equals("ChangeRequest.txt") && tokens.length >= 10 &&
-                            tokens[0].trim().equals(id.trim()) &&
+                            tokens[0].trim().equals(userId.trim()) &&
                             tokens[1].trim().equals(time.trim()) &&
-                            tokens[2].trim().equals(dateString.trim()) &&
+                            tokens[2].trim().equals(date.trim()) &&
                             tokens[3].trim().equals(room.trim()) &&
-                            tokens[4].trim().equals(name2.trim())) {
-                            목적 = tokens[5].trim();
-                            권한 = tokens[6].trim();
+                            tokens[4].trim().equals(requesterName.trim())) {
+
+                            purpose = tokens[5].trim();
+                            role = tokens[6].trim();
                             originalTime = tokens[7].trim();
                             originalDay = tokens[8].trim();
                             originalRoom = tokens[9].trim();
-                            
-                            // ChangeRequest에도 학생 수 필드 추가 (필요시)
+
                             if (tokens.length >= 11) {
                                 try {
                                     studentCount = Integer.parseInt(tokens[10].trim());
                                 } catch (NumberFormatException e) {
                                     studentCount = 1;
                                 }
-                            } else {
-                                studentCount = 1;
                             }
-                            
-                            isChangeRequest = true;
+
                             found = true;
-                            System.out.println("[ChangeRequest 찾음]: " + line);
-                            continue;
+                            isChangeRequest = true;
+                            System.out.println("[ChangeRequest 찾음] " + line);
+                            continue; // 승인 항목 제거
                         }
 
+                        // 다른 줄은 그대로 복사
                         writer.write(line);
                         writer.newLine();
                     }
+
                 } catch (IOException e) {
                     System.err.println("[ERROR] 파일 처리 오류: " + e.getMessage());
                     return "APPROVE_FAILED_IO";
@@ -180,41 +152,66 @@ public class ApproveReservationCommand implements Command {
                 return "APPROVE_FAILED";
             }
 
-            System.out.println("[승인] " + room + " " + dateString + " (" + day + ") " + time + " - 학생 수: " + studentCount + "명");
+            // ✅ 승인된 예약자 이름 조회
+            String reserverName = userDAO.getUserNameById(userId);
+            if (reserverName == null || reserverName.isEmpty()) {
+                reserverName = requesterName; // fallback
+            }
 
-            // 예약 파일에 추가
-            int roomNumber = Integer.parseInt(room.replaceAll("[^0-9]", ""));
-            String targetFile = (roomNumber == 908 || roomNumber == 912 || 
-                                roomNumber == 913 || roomNumber == 914)
-                    ? BASE_DIR + "/ReserveClass.txt" : BASE_DIR + "/ReserveLab.txt";
+            System.out.println("[승인 완료] " + reserverName + "(" + userId + ") "
+                    + room + " " + date + " (" + day + ") " + time + " - " + studentCount + "명");
 
-            // 변경 요청인 경우 기존 예약 삭제
+            // ✅ 강의실 / 실습실 파일 구분
+            ClassroomManager cm = ClassroomManager.getInstance();
+            boolean isClass = "CLASS".equals(cm.getClassroom(room).type);
+
+            String targetFile = isClass
+                    ? BASE_DIR + "/ReserveClass.txt"
+                    : BASE_DIR + "/ReserveLab.txt";
+            
+            // ✅ 변경 요청 시 기존 예약 삭제
             if (isChangeRequest) {
-                deleteOriginalReservation(name2, originalRoom, originalDay, originalTime);
+                deleteOriginalReservation(reserverName, originalRoom, originalDay, originalTime);
             }
 
-            // ✅ 예약 정보 저장 (날짜 포함)
+            // ✅ 승인된 예약 저장 (일관된 포맷)
             try (BufferedWriter writer = new BufferedWriter(new FileWriter(targetFile, true))) {
-                // 형식: 이름,방,날짜,요일,시간,목적,권한,상태,학생수
-                writer.write(String.join(",", name2, room, dateString, day, time, 목적, 권한, "예약됨", String.valueOf(studentCount)));
+                // 이름,방,날짜,요일,시간,목적,권한,상태,학생수,아이디
+                writer.write(String.join(",", reserverName, room, date, day, time,
+                        purpose, role, "예약됨", String.valueOf(studentCount), userId));
                 writer.newLine();
-                System.out.println("[예약 추가 완료] " + name2 + "," + room + "," + dateString + "," + day + "," + time + " (학생수: " + studentCount + "명)");
+                System.out.println("[예약 추가 완료] " + reserverName + "," + room + "," + date + "," + day + "," + time);
             }
 
-            // 백업 로그
+            // ✅ 백업 로그에도 동일 포맷 유지
             try (BufferedWriter writer = new BufferedWriter(new FileWriter(BASE_DIR + "/ApprovedBackup.txt", true))) {
-                writer.write(String.join(",", name2, room, dateString, day, time, 목적, 권한, "승인", String.valueOf(studentCount)));
+                writer.write(String.join(",", reserverName, room, date, day, time,
+                        purpose, role, "승인", String.valueOf(studentCount), userId));
                 writer.newLine();
             }
+
+            // 🔔 Observer 패턴: 예약 승인 알림 (로그로 확인)
+            String notificationType = isChangeRequest ? "CHANGE_APPROVED" : "APPROVED";
+            String message = isChangeRequest 
+                ? String.format("%s %s(%s) %s 예약 변경이 승인되었습니다.", room, date, day, time)
+                : String.format("%s %s(%s) %s 예약이 승인되었습니다.", room, date, day, time);
+            
+            System.out.println("[Observer 패턴] " + userId + "에게 알림 전송: " + message);
+            System.out.println("[Observer 패턴] 알림 유형: " + notificationType);
+            System.out.println("[Observer 패턴] 예약자: " + reserverName + " (" + userId + ")");
 
             return "APPROVE_SUCCESS";
         }
     }
 
+    /** ✅ 기존 예약 삭제 (변경 승인 시) */
     private void deleteOriginalReservation(String name, String room, String day, String time) {
         String normalizedRoom = room.replace("호", "").trim();
-        String targetFile = (normalizedRoom.equals("908") || normalizedRoom.equals("912") ||
-                            normalizedRoom.equals("913") || normalizedRoom.equals("914"))
+        
+        ClassroomManager cm = ClassroomManager.getInstance();
+        ClassroomManager.Classroom info = cm.getClassroom(room.endsWith("호") ? room : room + "호");
+        boolean isClass = info != null && "CLASS".equals(info.type);
+        String targetFile = isClass
                 ? BASE_DIR + "/ReserveClass.txt"
                 : BASE_DIR + "/ReserveLab.txt";
 
@@ -223,23 +220,26 @@ public class ApproveReservationCommand implements Command {
 
         try (BufferedReader reader = new BufferedReader(new FileReader(inputFile));
              BufferedWriter writer = new BufferedWriter(new FileWriter(tempFile))) {
+
             String line;
             while ((line = reader.readLine()) != null) {
                 String[] tokens = line.split(",");
-                if (tokens.length >= 7) {
-                    boolean match = tokens[0].trim().equals(name.trim()) &&
-                                   tokens[1].replace("호", "").trim().equals(normalizedRoom) &&
-                                   tokens[2].trim().equals(day.trim()) &&
-                                   tokens[3].trim().equals(time.trim());
+                if (tokens.length >= 10) {
+                    boolean match =
+                            tokens[0].trim().equals(name.trim()) &&
+                            tokens[1].replace("호", "").trim().equals(normalizedRoom) &&
+                            tokens[3].trim().equals(day.trim()) &&
+                            tokens[4].trim().equals(time.trim());
 
                     if (match) {
-                        System.out.println("[기존 예약 삭제]: " + line);
+                        System.out.println("[기존 예약 삭제] " + line);
                         continue;
                     }
                 }
                 writer.write(line);
                 writer.newLine();
             }
+
         } catch (IOException e) {
             System.err.println("[ERROR] 기존 예약 삭제 실패: " + e.getMessage());
         }
