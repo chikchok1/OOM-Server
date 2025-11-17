@@ -95,7 +95,7 @@ public class ReserveRequestCommand implements Command {
             // 예약 저장
             try (BufferedWriter writer = new BufferedWriter(new FileWriter(file, true))) {
                 // ✅ 날짜, 학생 수, 사용자 ID 포함하여 저장 (10개 필드)
-                String data = String.format("%s,%s,%s,%s,%s,%s,%s,대기,%d,%s",
+                String data = String.format("%s,%s,%s,%s,%s,%s,%s,대기중,%d,%s",
                     reserveName, room, dateString, day, time, purpose, role, studentCount, userId);
                 writer.write(data);
                 writer.newLine();

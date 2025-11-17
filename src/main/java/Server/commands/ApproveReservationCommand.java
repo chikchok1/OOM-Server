@@ -20,7 +20,7 @@ public class ApproveReservationCommand implements Command {
 
     @Override
     public String execute(String[] params, BufferedReader in, PrintWriter out) throws IOException {
-        if (params.length != 6) {
+        if (params.length != 7) {
             System.err.println("[ERROR] APPROVE_RESERVATION 파라미터 개수 오류: " + params.length);
             return "INVALID_APPROVE_FORMAT";
         }
@@ -36,14 +36,15 @@ public class ApproveReservationCommand implements Command {
         // 파라미터
         String userId = params[1].trim();      // 예약자 ID
         String time = params[2].trim();
-        String date = params[3].trim();
-        String room = params[4].trim();
-        String requesterName = params[5].trim();
+        String date = params[3].trim();        // 날짜
+        String day = params[4].trim();         // 요일
+        String room = params[5].trim();
+        String requesterName = params[6].trim();
 
-        System.out.println("승인 처리: 요청자=" + requesterName + ", ID=" + userId + ", 방=" + room + ", 날짜=" + date + ", 시간=" + time);
+        System.out.println("승인 처리: 요청자=" + requesterName + ", ID=" + userId + ", 방=" + room + ", 날짜=" + date + ", 요일=" + day + ", 시간=" + time);
 
         synchronized (FILE_LOCK) {
-            String purpose = "", role = "", day = "";
+            String purpose = "", role = "";
             int studentCount = 0;
             String originalTime = "", originalDay = "", originalRoom = "";
             boolean found = false;
@@ -86,11 +87,11 @@ public class ApproveReservationCommand implements Command {
                             }
 
                             boolean dateMatch = !fileDate.isEmpty() && fileDate.equals(date.trim());
+                            boolean dayMatch = !fileDay.isEmpty() && fileDay.equals(day.trim());
                             boolean timeMatch = fileTime.equals(time.trim());
 
-                            if (dateMatch && timeMatch) {
+                            if (dateMatch && dayMatch && timeMatch) {
                                 found = true;
-                                day = fileDay;
                                 purpose = tokens[5].trim();
                                 role = tokens[6].trim();
 

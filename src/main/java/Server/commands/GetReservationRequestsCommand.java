@@ -57,24 +57,27 @@ public class GetReservationRequestsCommand implements Command {
                     if (file.getName().equals("ChangeRequest.txt") && partsLine.length >= 5) {
                         String id = partsLine[0].trim();
                         String time = partsLine[1].trim();
-                        String day = partsLine[2].trim();
+                        String date = partsLine[2].trim();  // 날짜
                         String room = partsLine[3].trim();
                         String userName = partsLine[4].trim();
+                        
+                        // 요일 추출 (8번째 필드)
+                        String day = "";
+                        if (partsLine.length >= 9) {
+                            day = partsLine[8].trim();
+                        }
                         
                         // 학생 수 추출 (필드 10번째, 인덱스 10)
                         String studentCount = "1"; // 기본값
                         if (partsLine.length >= 11) {
                             studentCount = partsLine[10].trim();
                         }
-                        else if (partsLine.length == 10) {
-    studentCount = partsLine[9].trim(); // 구버전 호환
-                        }
                         
-                        out.println(String.join(",", id, time, day, room, userName, studentCount));
+                        out.println(String.join(",", id, time, date, day, room, userName, studentCount));
                     } else if (file.getName().equals("ReservationRequest.txt") && partsLine.length >= 5) {
                         String name2 = partsLine[0].trim();
                         String room = partsLine[1].trim();
-                        String dateOrDay = "";
+                        String date = "";
                         String day = "";
                         String time = "";
                         String id2 = userDAO.getUserIdByName(name2);
@@ -82,26 +85,26 @@ public class GetReservationRequestsCommand implements Command {
                         // ✅ 날짜 필드 유무에 따라 분기 처리
                         String studentCount = "1"; // 기본값
                         
-                        if (partsLine.length >= 9) {
-                            // 새 형식: 이름,방,날짜,요일,시간,목적,권한,상태,학생수
-                            dateOrDay = partsLine[2].trim();  // 날짜 (yyyy-MM-dd)
-                            day = partsLine[3].trim();        // 요일
+                        if (partsLine.length >= 10) {
+                            // 새 형식: 이름,방,날짜,요일,시간,목적,권한,상태,학생수,userId
+                            date = partsLine[2].trim();  // 날짜 (yyyy-MM-dd)
+                            day = partsLine[3].trim();   // 요일
                             time = partsLine[4].trim();
                             if (partsLine.length >= 9) {
                                 studentCount = partsLine[8].trim();
                             }
                         } else {
                             // 구 형식: 이름,방,요일,시간,목적,권한,상태,학생수
-                            dateOrDay = partsLine[2].trim();  // 요일
-                            day = dateOrDay;
+                            day = partsLine[2].trim();  // 요일
+                            date = "";  // 날짜 없음
                             time = partsLine[3].trim();
                             if (partsLine.length >= 8) {
                                 studentCount = partsLine[7].trim();
                             }
                         }
                         
-                        // ✅ 날짜 정보를 포함하여 전송 (dateOrDay를 day 위치에)
-                        out.println(String.join(",", id2, time, dateOrDay, room, name2, studentCount));
+                        // ✅ id, time, date, day, room, name, studentCount 순서로 전송
+                        out.println(String.join(",", id2, time, date, day, room, name2, studentCount));
                     }
                 }
             } catch (IOException e) {

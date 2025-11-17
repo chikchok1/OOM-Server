@@ -18,7 +18,7 @@ public class RejectReservationCommand implements Command {
 
     @Override
     public String execute(String[] params, BufferedReader in, PrintWriter out) throws IOException {
-        if (params.length != 6) {
+        if (params.length != 7) {
             System.err.println("[ERROR] REJECT_RESERVATION 파라미터 개수 오류: " + params.length);
             return "INVALID_REJECT_FORMAT";
         }
@@ -32,14 +32,14 @@ public class RejectReservationCommand implements Command {
 
         String id = params[1];      // 예약 요청자 ID
         String time = params[2];
-        String day = params[3];
-        String room = params[4];
-        String name2 = params[5];
+        String date = params[3];    // 날짜
+        String day = params[4];     // 요일
+        String room = params[5];
+        String name2 = params[6];
 
-        System.out.println("[DEBUG] 거절 처리: 요청자=" + name2 + ", 방=" + room + ", 시간=" + time);
+        System.out.println("[DEBUG] 거절 처리: 요청자=" + name2 + ", 방=" + room + ", 날짜=" + date + ", 요일=" + day + ", 시간=" + time);
 
         boolean isChangeRequest = false;
-        String date = "";  // 날짜 정보 저장
 
         synchronized (FILE_LOCK) {
             File[] targets = {
@@ -63,15 +63,13 @@ public class RejectReservationCommand implements Command {
                         String[] tokens = line.split(",");
                         
                         // ReservationRequest 매칭
-                        if (file.getName().equals("ReservationRequest.txt") && tokens.length >= 4 &&
+                        if (file.getName().equals("ReservationRequest.txt") && tokens.length >= 5 &&
                             tokens[0].trim().equals(name2.trim()) &&
                             tokens[1].trim().equals(room.trim()) &&
+                            tokens[2].trim().equals(date.trim()) &&
                             tokens[3].trim().equals(day.trim()) &&
                             tokens[4].trim().equals(time.trim())) {
                             removed = true;
-                            if (tokens.length >= 3) {
-                                date = tokens[2].trim();  // 날짜 저장
-                            }
                             System.out.println("[DEBUG] ReservationRequest 삭제: " + line);
                             continue;
                         } 
@@ -79,12 +77,11 @@ public class RejectReservationCommand implements Command {
                         else if (file.getName().equals("ChangeRequest.txt") && tokens.length >= 5 &&
                                   tokens[0].trim().equals(id.trim()) &&
                                   tokens[1].trim().equals(time.trim()) &&
-                                  tokens[2].trim().equals(day.trim()) &&
+                                  tokens[2].trim().equals(date.trim()) &&
                                   tokens[3].trim().equals(room.trim()) &&
                                   tokens[4].trim().equals(name2.trim())) {
                             removed = true;
                             isChangeRequest = true;
-                            date = tokens[2].trim();  // 날짜 저장
                             System.out.println("[DEBUG] ChangeRequest 삭제: " + line);
                             continue;
                         }

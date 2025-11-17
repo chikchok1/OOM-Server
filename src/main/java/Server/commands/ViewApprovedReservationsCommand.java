@@ -17,17 +17,11 @@ public class ViewApprovedReservationsCommand implements Command {
 
     @Override
     public String execute(String[] params, BufferedReader in, PrintWriter out) throws IOException {
-        if (params.length < 2) {
-            out.println("ERROR: Invalid request format");
-            out.flush();
-            return "VIEW_APPROVED_RESERVATIONS_FAILED";
-        }
-
-        String userId = params[1].trim();
-
-        // 본인 확인
-        if (!userId.equals(currentUserId)) {
-            out.println("ERROR: Unauthorized");
+        // ✅ currentUserId 사용 (클라이언트가 보낸 userId 무시)
+        String userId = currentUserId;
+        
+        if (userId == null || userId.isEmpty()) {
+            out.println("ERROR: User not authenticated");
             out.flush();
             return "VIEW_APPROVED_RESERVATIONS_FAILED";
         }
@@ -78,8 +72,8 @@ public class ViewApprovedReservationsCommand implements Command {
                             System.out.println("  - 예약자 이름: " + reservedUserName + ", ID: " + reservedUserId + ", 상태: " + status);
                             System.out.println("  - 비교: '" + reservedUserId + "' == '" + userId + "' ? " + reservedUserId.equals(userId));
 
-                            // 본인 + 승인된 예약만 출력
-                            if (reservedUserId.equals(userId) && status.equals("예약됨")) {
+                            // 본인 + (승인된 예약 또는 대기중인 예약) 출력
+                            if (reservedUserId.equals(userId) && (status.equals("예약됨") || status.equals("대기중"))) {
                                 String output = "CLASS," + line;
                                 out.println(output);
                                 count++;
@@ -101,7 +95,7 @@ public class ViewApprovedReservationsCommand implements Command {
                         if (parts.length >= 10) {
                             String status = parts[7].trim();
                             String reservedUserId = (parts.length > 9) ? parts[9].trim() : "";
-                            if (reservedUserId.equals(userId) && status.equals("예약됨")) {
+                            if (reservedUserId.equals(userId) && (status.equals("예약됨") || status.equals("대기중"))) {
                                 out.println("LAB," + line);
                                 count++;
                             }
