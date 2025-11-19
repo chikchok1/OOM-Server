@@ -14,9 +14,8 @@ import java.io.*;
 public class ViewAllReservationsCommand implements Command {
     private final String BASE_DIR;
     private final UserDAO userDAO;
-    private final String currentUserId; // 🔥 추가
+    private final String currentUserId;
 
-    // 🔥 생성자에 currentUserId 추가
     public ViewAllReservationsCommand(String baseDir, UserDAO userDAO, String currentUserId) {
         this.BASE_DIR = baseDir;
         this.userDAO = userDAO;
@@ -25,8 +24,7 @@ public class ViewAllReservationsCommand implements Command {
 
     @Override
     public String execute(String[] params, BufferedReader in, PrintWriter out) throws IOException {
-        // 🔥 수정: currentUserId로 권한 확인
-        System.out.println("[DEBUG] VIEW_ALL_RESERVATIONS - 권한 확인 userId: " + currentUserId);
+        System.out.println("VIEW_ALL_RESERVATIONS - 권한 확인 userId: " + currentUserId);
         
         if (currentUserId == null || !userDAO.authorizeAccess(currentUserId)) {
             System.err.println("[ERROR] 권한 없음: " + currentUserId);
@@ -47,15 +45,32 @@ public class ViewAllReservationsCommand implements Command {
                 String line;
                 while ((line = reader.readLine()) != null) {
                     String[] lineParts = line.split(",");
-                    // ✅ 9개 필드로 수정
-                    if (lineParts.length >= 9) {
-                        String fileUserName = lineParts[0];
-                        String room = lineParts[1];
-                        String day = lineParts[2];
-                        String time = lineParts[3];
+                    // ✅ 파일 형식: 이름,방,날짜,요일,시간,목적,역할,상태,인원,userId
+                    if (lineParts.length >= 10) {
+                        String fileUserName = lineParts[0].trim();
+                        String room = lineParts[1].trim();
+                        String date = lineParts[2].trim();
+                        String day = lineParts[3].trim();
+                        String time = lineParts[4].trim();
+                        String studentCount = lineParts[8].trim();
+                        String resolvedUserId = lineParts[9].trim();
 
+                        // ✅ 클라이언트 형식: userId,time,day,date,room,name,count
+                        out.println(String.join(",", resolvedUserId, time, day, date, room, fileUserName, studentCount));
+                        System.out.println("[ViewAllReservations] 전송: " + resolvedUserId + "," + time + "," + day + "," + date + "," + room + "," + fileUserName + "," + studentCount);
+                    } else if (lineParts.length >= 9) {
+                        // ✅ 구 형식 지원 (userId 없음)
+                        String fileUserName = lineParts[0].trim();
+                        String room = lineParts[1].trim();
+                        String date = lineParts[2].trim();
+                        String day = lineParts[3].trim();
+                        String time = lineParts[4].trim();
+                        String studentCount = lineParts[8].trim();
                         String resolvedUserId = userDAO.getUserIdByName(fileUserName);
-                        out.println(String.join(",", resolvedUserId, time, day, room, fileUserName));
+
+                        // ✅ 클라이언트 형식: userId,time,day,date,room,name,count
+                        out.println(String.join(",", resolvedUserId, time, day, date, room, fileUserName, studentCount));
+                        System.out.println("[ViewAllReservations] 전송: " + resolvedUserId + "," + time + "," + day + "," + date + "," + room + "," + fileUserName + "," + studentCount);
                     }
                 }
             } catch (IOException e) {
@@ -65,7 +80,7 @@ public class ViewAllReservationsCommand implements Command {
             }
         }
 
-        out.println("END_OF_MY_RESERVATIONS");
+        out.println("END_OF_APPROVED_RESERVATIONS");
         out.flush();
 
         return null;
