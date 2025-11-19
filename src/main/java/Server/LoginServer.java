@@ -38,6 +38,12 @@ public class LoginServer {
             currentClients,
             MAX_CLIENTS
         );
+        
+        // ✅ ReservationSubject에 오프라인 알림 관리자 초기화
+        common.observer.ReservationSubject subject = 
+            common.observer.ReservationSubject.getInstance();
+        subject.initializeOfflineManager(BASE_DIR);
+        System.out.println("[서버 초기화] 오프라인 알림 관리자 설정 완료");
 
         try {
             logServerStart();
@@ -95,13 +101,19 @@ public class LoginServer {
     /**
      * 클라이언트 연결 처리 (Command 패턴 적용)
      */
+    // LoginServer.java의 handleClient 메소드 수정 부분
+
+    /**
+     * 클라이언트 연결 처리 (Command 패턴 적용 + Observer 등록)
+     */
     private static String handleClient(Socket socket) throws IOException {
         String loggedInUserId = null;
+        PrintWriter out = null;
 
-        try (
+        try {
             BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
-            PrintWriter out = new PrintWriter(socket.getOutputStream(), true)
-        ) {
+            out = new PrintWriter(socket.getOutputStream(), true);
+            
             String request = in.readLine();
             System.out.println("수신된 요청: " + request);
 
@@ -118,7 +130,7 @@ public class LoginServer {
                 return null;
             }
 
-            //  Command 패턴 적용: 요청 문자열 → Command 객체 생성
+            // Command 패턴 적용: 요청 문자열 → Command 객체 생성
             Command command = commandFactory.createCommand(request);
             
             if (command == null) {
@@ -127,7 +139,7 @@ public class LoginServer {
                 return null;
             }
 
-            //  Command 실행
+            // Command 실행
             String[] params = request.split(",");
             String response = command.execute(params, in, out);
             
@@ -137,15 +149,24 @@ public class LoginServer {
                 out.flush();
             }
 
-            // 로그인 성공 시 세션 등록 및 후속 메시지 처리
+            // 로그인 성공 시 세션 등록 및 Observer 등록
             if (request.startsWith("LOGIN") && response != null && response.startsWith("SUCCESS")) {
                 loggedInUserId = params[1];
                 loggedInUsers.put(loggedInUserId, socket);
                 currentClients.incrementAndGet();
                 
+                //  Observer 패턴: 클라이언트를 Subject에 등록
+                common.observer.ReservationSubject subject = 
+                    common.observer.ReservationSubject.getInstance();
+                subject.registerClient(loggedInUserId, out);
+                System.out.println("[Observer] " + loggedInUserId + " 클라이언트 알림 등록 완료");
+                
                 System.out.println(loggedInUserId + " 로그인 성공");
                 System.out.println("현재 로그인 중인 사용자: " + loggedInUsers.keySet());
                 System.out.println("현재 접속자 수: " + currentClients.get());
+                
+                // ✅ 로그인 후 저장된 오프라인 알림 전송
+                OfflineNotificationHelper.sendOfflineNotifications(loggedInUserId, out);
                 
                 // 로그인 후 후속 메시지 처리
                 handleSubsequentMessages(in, out, loggedInUserId);
@@ -160,6 +181,14 @@ public class LoginServer {
         } catch (IOException e) {
             System.err.println("클라이언트 처리 중 오류: " + e.getMessage());
             throw e;
+        } finally {
+            //  Observer 패턴: 로그아웃 시 Subject에서 제거
+            if (loggedInUserId != null && out != null) {
+                common.observer.ReservationSubject subject = 
+                    common.observer.ReservationSubject.getInstance();
+                subject.unregisterClient(loggedInUserId, out);
+                System.out.println("[Observer] " + loggedInUserId + " 클라이언트 알림 등록 해제");
+            }
         }
 
         return loggedInUserId;
