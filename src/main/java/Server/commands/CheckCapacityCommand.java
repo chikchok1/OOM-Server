@@ -1,6 +1,7 @@
 package Server.commands;
 
-import common.manager.ClassroomManager;
+import Server.manager.ServerClassroomManager;
+import common.dto.ClassroomDTO;
 import java.io.*;
 
 /**
@@ -22,7 +23,7 @@ public class CheckCapacityCommand implements Command {
             String roomName = parts[1].trim();
             int requestedCount = Integer.parseInt(parts[2].trim());
             
-            ClassroomManager manager = ClassroomManager.getInstance();
+            ServerClassroomManager manager = ServerClassroomManager.getInstance();
             
             // 강의실 존재 여부 확인
             if (!manager.exists(roomName)) {
@@ -40,7 +41,7 @@ public class CheckCapacityCommand implements Command {
                 out.flush();
                 System.out.println(String.format("[CheckCapacityCommand] %s: %d명 예약 가능", roomName, requestedCount));
             } else {
-                ClassroomManager.Classroom classroom = manager.getClassroom(roomName);
+                ClassroomDTO classroom = manager.getClassroom(roomName);
                 int allowedCapacity = classroom.getAllowedCapacity();
                 out.println("CAPACITY_EXCEEDED:" + allowedCapacity);
                 out.flush();

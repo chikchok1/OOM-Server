@@ -1,7 +1,7 @@
 package Server.commands;
 
-import common.manager.ClassroomManager;
-import common.manager.ClassroomManager.Classroom;
+import Server.manager.ServerClassroomManager;
+import common.dto.ClassroomDTO;
 import java.io.*;
 
 public class ReserveRequestCommand implements Command {
@@ -62,7 +62,7 @@ public class ReserveRequestCommand implements Command {
         }
 
         // Singleton으로 수용 인원 체크
-        ClassroomManager manager = ClassroomManager.getInstance();
+        ServerClassroomManager manager = ServerClassroomManager.getInstance();
         
         // 강의실 존재 여부 확인
         if (!manager.exists(room)) {
@@ -71,7 +71,7 @@ public class ReserveRequestCommand implements Command {
         }
 
         synchronized (FILE_LOCK) {
-            Classroom classroom = manager.getClassroom(room);
+            ClassroomDTO classroom = manager.getClassroom(room);
             
             //  ✅ 날짜 기반으로 해당 시간대에 이미 예약이 존재하는지 체크 
             boolean isAlreadyReserved = isTimeSlotReserved(room, dateString, time);

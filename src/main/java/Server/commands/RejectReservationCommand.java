@@ -1,6 +1,8 @@
 package Server.commands;
 
 import Server.UserDAO;
+import common.observer.ReservationNotification;
+import common.observer.ReservationSubject;
 import java.io.*;
 
 public class RejectReservationCommand implements Command {
@@ -95,14 +97,24 @@ public class RejectReservationCommand implements Command {
             }
 
             if (removed) {
-                // 🔔 Observer 패턴: 예약 거절 알림 (로그로 확인)
-                String notificationType = isChangeRequest ? "CHANGE_REJECTED" : "REJECTED";
+                // 🔔 Observer 패턴: 클라이언트에게 실시간 거절 알림 전송
+                ReservationSubject subject = ReservationSubject.getInstance();
+                ReservationNotification.NotificationType notificationType = 
+                    isChangeRequest ? ReservationNotification.NotificationType.CHANGE_REJECTED 
+                                    : ReservationNotification.NotificationType.REJECTED;
+                
                 String message = isChangeRequest 
                     ? String.format("%s %s(%s) %s 예약 변경이 거절되었습니다.", room, date, day, time)
                     : String.format("%s %s(%s) %s 예약이 거절되었습니다.", room, date, day, time);
                 
-                System.out.println("[Observer 패턴] " + id + "에게 알림 전송: " + message);
-                System.out.println("[Observer 패턴] 알림 유형: " + notificationType);
+                ReservationNotification notification = 
+                    new ReservationNotification(
+                        id, name2, room, date, day, time, notificationType, message
+                    );
+                
+                // 클라이언트에게 실제 알림 전송
+                subject.notifyUser(notification);
+                System.out.println("[Observer 패턴] " + id + "에게 거절 알림 전송 완료");
                 
                 System.out.println("[DEBUG] 거절 처리 완료");
                 return "REJECT_SUCCESS";

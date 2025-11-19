@@ -9,7 +9,7 @@ package Server.commands;
  * @author YangJinWon
  */
 import Server.UserDAO;
-import common.manager.ClassroomManager;
+import Server.manager.ServerClassroomManager;
 import java.io.*;
 
 public class UpdateRoomCapacityCommand implements Command {
@@ -45,8 +45,8 @@ public class UpdateRoomCapacityCommand implements Command {
             return "INVALID_CAPACITY";
         }
 
-        // ClassroomManager를 통해 수용인원 변경
-        ClassroomManager manager = ClassroomManager.getInstance();
+        // ServerClassroomManager를 통해 수용인원 변경
+        ServerClassroomManager manager = ServerClassroomManager.getInstance();
         
         if (!manager.exists(roomName)) {
             return "ROOM_NOT_FOUND";
