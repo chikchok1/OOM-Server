@@ -1,7 +1,10 @@
 package Server.commands;
 
 import Server.UserDAO;
-import common.manager.ClassroomManager;
+import Server.manager.ServerClassroomManager;
+import common.dto.ClassroomDTO;
+import common.observer.ReservationNotification;
+import common.observer.ReservationSubject;
 import java.io.*;
 
 public class ApproveReservationCommand implements Command {
@@ -46,7 +49,7 @@ public class ApproveReservationCommand implements Command {
         synchronized (FILE_LOCK) {
             String purpose = "", role = "";
             int studentCount = 0;
-            String originalTime = "", originalDay = "", originalRoom = "";
+            String originalTime = "", originalDate = "", originalDay = "", originalRoom = "";
             boolean found = false;
             boolean isChangeRequest = false;
 
@@ -69,12 +72,12 @@ public class ApproveReservationCommand implements Command {
                     while ((line = reader.readLine()) != null) {
                         String[] tokens = line.split(",");
 
-                        if (file.getName().equals("ChangeRequest.txt") && tokens.length == 7) {
-                            System.out.println("[WARN] 구버전 ChangeRequest 무시: " + line);
+                        if (file.getName().equals("ChangeRequest.txt") && tokens.length < 13) {
+                            System.out.println("[WARN] 구버전 ChangeRequest 무시 (" + tokens.length + "개 필드): " + line);
                             continue;
                         }
 
-                        // ✅ ReservationRequest 처리
+                        //  ReservationRequest 처리
                         if (file.getName().equals("ReservationRequest.txt") && tokens.length >= 7 &&
                             tokens[0].trim().equals(requesterName.trim()) &&
                             tokens[1].trim().equals(room.trim())) {
@@ -106,26 +109,27 @@ public class ApproveReservationCommand implements Command {
                             }
                         }
 
-                        // ✅ ChangeRequest 처리
-                        if (file.getName().equals("ChangeRequest.txt") && tokens.length >= 10 &&
+                        //  ChangeRequest 처리
+                        // ChangeRequest 포맷: ID,시간,날짜,요일,방,이름,목적,권한,원시간,원날짜,원요일,원방,인원 (13개)
+                        if (file.getName().equals("ChangeRequest.txt") && tokens.length >= 13 &&
                             tokens[0].trim().equals(userId.trim()) &&
                             tokens[1].trim().equals(time.trim()) &&
                             tokens[2].trim().equals(date.trim()) &&
-                            tokens[3].trim().equals(room.trim()) &&
-                            tokens[4].trim().equals(requesterName.trim())) {
+                            tokens[3].trim().equals(day.trim()) &&
+                            tokens[4].trim().equals(room.trim()) &&
+                            tokens[5].trim().equals(requesterName.trim())) {
 
-                            purpose = tokens[5].trim();
-                            role = tokens[6].trim();
-                            originalTime = tokens[7].trim();
-                            originalDay = tokens[8].trim();
-                            originalRoom = tokens[9].trim();
+                            purpose = tokens[6].trim();
+                            role = tokens[7].trim();
+                            originalTime = tokens[8].trim();
+                            originalDate = tokens[9].trim();
+                            originalDay = tokens[10].trim();
+                            originalRoom = tokens[11].trim();
 
-                            if (tokens.length >= 11) {
-                                try {
-                                    studentCount = Integer.parseInt(tokens[10].trim());
-                                } catch (NumberFormatException e) {
-                                    studentCount = 1;
-                                }
+                            try {
+                                studentCount = Integer.parseInt(tokens[12].trim());
+                            } catch (NumberFormatException e) {
+                                studentCount = 1;
                             }
 
                             found = true;
@@ -153,7 +157,7 @@ public class ApproveReservationCommand implements Command {
                 return "APPROVE_FAILED";
             }
 
-            // ✅ 승인된 예약자 이름 조회
+            //  승인된 예약자 이름 조회
             String reserverName = userDAO.getUserNameById(userId);
             if (reserverName == null || reserverName.isEmpty()) {
                 reserverName = requesterName; // fallback
@@ -162,20 +166,21 @@ public class ApproveReservationCommand implements Command {
             System.out.println("[승인 완료] " + reserverName + "(" + userId + ") "
                     + room + " " + date + " (" + day + ") " + time + " - " + studentCount + "명");
 
-            // ✅ 강의실 / 실습실 파일 구분
-            ClassroomManager cm = ClassroomManager.getInstance();
-            boolean isClass = "CLASS".equals(cm.getClassroom(room).type);
+            //  강의실 / 실습실 파일 구분
+            ServerClassroomManager cm = ServerClassroomManager.getInstance();
+            ClassroomDTO roomDto = cm.getClassroom(room);
+            boolean isClass = roomDto != null && roomDto.isClassroom();
 
             String targetFile = isClass
                     ? BASE_DIR + "/ReserveClass.txt"
                     : BASE_DIR + "/ReserveLab.txt";
             
-            // ✅ 변경 요청 시 기존 예약 삭제
+            //  변경 요청 시 기존 예약 삭제
             if (isChangeRequest) {
-                deleteOriginalReservation(reserverName, originalRoom, originalDay, originalTime);
+                deleteOriginalReservation(reserverName, originalRoom, originalDate, originalDay, originalTime);
             }
 
-            // ✅ 승인된 예약 저장 (일관된 포맷)
+            //  승인된 예약 저장 (일관된 포맷)
             try (BufferedWriter writer = new BufferedWriter(new FileWriter(targetFile, true))) {
                 // 이름,방,날짜,요일,시간,목적,권한,상태,학생수,아이디
                 writer.write(String.join(",", reserverName, room, date, day, time,
@@ -184,34 +189,43 @@ public class ApproveReservationCommand implements Command {
                 System.out.println("[예약 추가 완료] " + reserverName + "," + room + "," + date + "," + day + "," + time);
             }
 
-            // ✅ 백업 로그에도 동일 포맷 유지
+            // 백업 로그에도 동일 포맷 유지
             try (BufferedWriter writer = new BufferedWriter(new FileWriter(BASE_DIR + "/ApprovedBackup.txt", true))) {
                 writer.write(String.join(",", reserverName, room, date, day, time,
                         purpose, role, "승인", String.valueOf(studentCount), userId));
                 writer.newLine();
             }
 
-            // 🔔 Observer 패턴: 예약 승인 알림 (로그로 확인)
-            String notificationType = isChangeRequest ? "CHANGE_APPROVED" : "APPROVED";
+            //  Observer 패턴: 클라이언트에게 실시간 알림 전송
+            ReservationSubject subject = ReservationSubject.getInstance();
+            ReservationNotification.NotificationType notificationType = 
+                isChangeRequest ? ReservationNotification.NotificationType.CHANGE_APPROVED 
+                                : ReservationNotification.NotificationType.APPROVED;
+            
             String message = isChangeRequest 
                 ? String.format("%s %s(%s) %s 예약 변경이 승인되었습니다.", room, date, day, time)
                 : String.format("%s %s(%s) %s 예약이 승인되었습니다.", room, date, day, time);
             
-            System.out.println("[Observer 패턴] " + userId + "에게 알림 전송: " + message);
-            System.out.println("[Observer 패턴] 알림 유형: " + notificationType);
-            System.out.println("[Observer 패턴] 예약자: " + reserverName + " (" + userId + ")");
+            ReservationNotification notification = 
+                new ReservationNotification(
+                    userId, reserverName, room, date, day, time, notificationType, message
+                );
+            
+            // 클라이언트에게 실제 알림 전송
+            subject.notifyUser(notification);
+            System.out.println("[Observer 패턴] " + userId + "에게 알림 전송 완료");
 
             return "APPROVE_SUCCESS";
         }
     }
 
-    /** ✅ 기존 예약 삭제 (변경 승인 시) */
-    private void deleteOriginalReservation(String name, String room, String day, String time) {
+    /**  기존 예약 삭제 (변경 승인 시) */
+    private void deleteOriginalReservation(String name, String room, String date, String day, String time) {
         String normalizedRoom = room.replace("호", "").trim();
         
-        ClassroomManager cm = ClassroomManager.getInstance();
-        ClassroomManager.Classroom info = cm.getClassroom(room.endsWith("호") ? room : room + "호");
-        boolean isClass = info != null && "CLASS".equals(info.type);
+        ServerClassroomManager cm = ServerClassroomManager.getInstance();
+        ClassroomDTO info = cm.getClassroom(room.endsWith("호") ? room : room + "호");
+        boolean isClass = info != null && info.isClassroom();
         String targetFile = isClass
                 ? BASE_DIR + "/ReserveClass.txt"
                 : BASE_DIR + "/ReserveLab.txt";
@@ -225,10 +239,12 @@ public class ApproveReservationCommand implements Command {
             String line;
             while ((line = reader.readLine()) != null) {
                 String[] tokens = line.split(",");
+                // 이름,방,날짜,요일,시간,목적,권한,상태,학생수,아이디 (10개 필드)
                 if (tokens.length >= 10) {
                     boolean match =
                             tokens[0].trim().equals(name.trim()) &&
                             tokens[1].replace("호", "").trim().equals(normalizedRoom) &&
+                            tokens[2].trim().equals(date.trim()) &&
                             tokens[3].trim().equals(day.trim()) &&
                             tokens[4].trim().equals(time.trim());
 
