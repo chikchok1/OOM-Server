@@ -235,4 +235,79 @@ public class ServerClassroomManager {
         loadClassroomData();
         System.out.println("[서버] 강의실 데이터 새로고침 완료");
     }
+    
+    /**
+     * 강의실 추가
+     */
+    public synchronized boolean addClassroom(ClassroomDTO classroom) {
+        if (classroom == null) {
+            System.err.println("[서버] classroom이 null입니다.");
+            return false;
+        }
+        
+        String name = classroom.getRoomName();
+        String type = classroom.getType();
+        
+        // 중복 체크
+        if (classrooms.containsKey(name)) {
+            System.err.println("[서버] 이미 존재하는 강의실: " + name);
+            return false;
+        }
+        
+        // 메모리에 추가
+        classrooms.put(name, classroom);
+        
+        if ("CLASS".equals(type)) {
+            classroomNames.add(name);
+            Collections.sort(classroomNames);
+        } else if ("LAB".equals(type)) {
+            labNames.add(name);
+            Collections.sort(labNames);
+        }
+        
+        // 파일에 저장
+        saveClassroomData();
+        
+        System.out.println("[서버] 강의실 추가 완료: " + name + " (" + type + ", " + classroom.getCapacity() + "명)");
+        return true;
+    }
+    
+    /**
+     * 강의실 삭제
+     */
+    public synchronized boolean deleteClassroom(String roomName) {
+        if (roomName == null || roomName.trim().isEmpty()) {
+            System.err.println("[서버] 강의실 이름이 비어있습니다.");
+            return false;
+        }
+        
+        ClassroomDTO dto = classrooms.get(roomName);
+        if (dto == null) {
+            System.err.println("[서버] 존재하지 않는 강의실: " + roomName);
+            return false;
+        }
+        
+        // 메모리에서 삭제
+        classrooms.remove(roomName);
+        
+        String type = dto.getType();
+        if ("CLASS".equals(type)) {
+            classroomNames.remove(roomName);
+        } else if ("LAB".equals(type)) {
+            labNames.remove(roomName);
+        }
+        
+        // 파일에 저장
+        saveClassroomData();
+        
+        System.out.println("[서버] 강의실 삭제 완료: " + roomName);
+        return true;
+    }
+    
+    /**
+     * 강의실 존재 여부 확인
+     */
+    public boolean classroomExists(String roomName) {
+        return classrooms.containsKey(roomName);
+    }
 }

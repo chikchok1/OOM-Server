@@ -102,6 +102,10 @@ public class CommandFactory {
                 new ViewApprovedReservationsCommand(BASE_DIR, userDAO, currentUserId);
             case "CHANGE_RESERVATION_FULL" ->
                 new ChangeReservationFullCommand(BASE_DIR, FILE_LOCK);
+            case "ADD_CLASSROOM" ->
+                new AddClassroomCommand();
+            case "DELETE_CLASSROOM" ->
+                new DeleteClassroomCommand();
             default ->
                 null;
         };
