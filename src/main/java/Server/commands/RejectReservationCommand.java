@@ -76,12 +76,13 @@ public class RejectReservationCommand implements Command {
                             continue;
                         } 
                         // ChangeRequest 매칭
-                        else if (file.getName().equals("ChangeRequest.txt") && tokens.length >= 5 &&
+                        else if (file.getName().equals("ChangeRequest.txt") && tokens.length >= 13 &&
                                   tokens[0].trim().equals(id.trim()) &&
                                   tokens[1].trim().equals(time.trim()) &&
                                   tokens[2].trim().equals(date.trim()) &&
-                                  tokens[3].trim().equals(room.trim()) &&
-                                  tokens[4].trim().equals(name2.trim())) {
+                                  tokens[3].trim().equals(day.trim()) &&
+                                  tokens[4].trim().equals(room.trim()) &&
+                                  tokens[5].trim().equals(name2.trim())) {
                             removed = true;
                             isChangeRequest = true;
                             System.out.println("[DEBUG] ChangeRequest 삭제: " + line);
