@@ -2,7 +2,7 @@ package Server.commands;
 
 import java.io.*;
 import java.util.*;
-
+import Server.exceptions.*;
 public class ChangeReservationFullCommand implements Command {
 
     private final String BASE_DIR;
@@ -14,7 +14,7 @@ public class ChangeReservationFullCommand implements Command {
     }
 
     @Override
-    public String execute(String[] params, BufferedReader in, PrintWriter out) throws IOException {
+    public String execute(String[] params, BufferedReader in, PrintWriter out) throws IOException, InvalidInputException, DatabaseException, AuthenticationException, BusinessLogicException {
         synchronized (FILE_LOCK) {
             // 백업용 변수 (롤백을 위해)
             String deletedReservation = null;
@@ -297,7 +297,7 @@ public class ChangeReservationFullCommand implements Command {
      */
     private ReservationBackup findAndBackupReservation(
             File reservationFile, File requestFile, 
-            String userId, String userName, String room, String date, String day, String time) throws IOException {
+            String userId, String userName, String room, String date, String day, String time) throws IOException, InvalidInputException, DatabaseException, AuthenticationException, BusinessLogicException {
         
         // 먼저 ReservationFile에서 찾기
         String backup = findReservationLine(reservationFile, userId, userName, room, date, day, time);
@@ -318,7 +318,7 @@ public class ChangeReservationFullCommand implements Command {
      * ✅ 파일에서 예약 라인 찾기 (백업용)
      */
     private String findReservationLine(File file, String userId, String userName, 
-                                      String room, String date, String day, String time) throws IOException {
+                                      String room, String date, String day, String time) throws IOException, InvalidInputException, DatabaseException, AuthenticationException, BusinessLogicException {
         if (!file.exists()) {
             return null;
         }
@@ -380,7 +380,7 @@ public class ChangeReservationFullCommand implements Command {
      * ✅ 파일에서 예약 삭제
      */
     private boolean deleteReservationFromFile(File file, String userId, String userName, 
-                                             String room, String date, String day, String time) throws IOException {
+                                             String room, String date, String day, String time) throws IOException, InvalidInputException, DatabaseException, AuthenticationException, BusinessLogicException {
         if (!file.exists()) {
             return false;
         }
@@ -459,7 +459,7 @@ public class ChangeReservationFullCommand implements Command {
     /**
      * ✅ 삭제된 예약 복구 (롤백)
      */
-    private void restoreReservation(File file, String reservationLine) throws IOException {
+    private void restoreReservation(File file, String reservationLine) throws IOException, InvalidInputException, DatabaseException, AuthenticationException, BusinessLogicException {
         try (FileWriter fw = new FileWriter(file, true);
              PrintWriter pw = new PrintWriter(fw)) {
             pw.println(reservationLine);

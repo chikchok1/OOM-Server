@@ -3,10 +3,11 @@ package Server.commands;
 import Server.manager.ServerClassroomManager;
 
 import java.io.*;
+import Server.exceptions.*;
 
 public class DeleteClassroomCommand implements Command {
     @Override
-    public String execute(String[] args, BufferedReader in, PrintWriter out) throws IOException {
+    public String execute(String[] args, BufferedReader in, PrintWriter out) throws IOException, InvalidInputException, DatabaseException, AuthenticationException, BusinessLogicException {
         try {
             // args: [DELETE_CLASSROOM, roomName]
             if (args.length < 2) {

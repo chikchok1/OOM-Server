@@ -1,5 +1,6 @@
 package Server.commands;
 
+import Server.exceptions.*;
 import Server.manager.ServerClassroomManager;
 import common.dto.ClassroomDTO;
 import java.io.*;
@@ -11,7 +12,9 @@ import java.util.List;
 public class GetLabsCommand implements Command {
     
     @Override
-    public String execute(String[] params, BufferedReader in, PrintWriter out) throws IOException {
+    public String execute(String[] params, BufferedReader in, PrintWriter out) 
+            throws IOException, InvalidInputException, DatabaseException, 
+                   AuthenticationException, BusinessLogicException {
         ServerClassroomManager manager = ServerClassroomManager.getInstance();
         List<ClassroomDTO> labs = manager.getAllLabs();
         

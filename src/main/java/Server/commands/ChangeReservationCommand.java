@@ -9,7 +9,7 @@ package Server.commands;
  * @author YangJinWon
  */
 import java.io.*;
-
+import Server.exceptions.*;
 public class ChangeReservationCommand implements Command {
     private final String BASE_DIR;
     private final Object FILE_LOCK;
@@ -20,7 +20,7 @@ public class ChangeReservationCommand implements Command {
     }
 
     @Override
-    public String execute(String[] params, BufferedReader in, PrintWriter out) throws IOException {
+    public String execute(String[] params, BufferedReader in, PrintWriter out) throws IOException, InvalidInputException, DatabaseException, AuthenticationException, BusinessLogicException {
         System.out.println("[DEBUG] CHANGE_RESERVATION 요청 진입");
 
         // 변경 인원을 포함하면 11개 파라미터가 필요함 (COMMAND 포함)

@@ -10,7 +10,7 @@ package Server.commands;
  */
 import Server.UserDAO;
 import java.io.*;
-
+import Server.exceptions.*;
 public class ChangePasswordCommand implements Command {
     private final UserDAO userDAO;
 
@@ -19,7 +19,7 @@ public class ChangePasswordCommand implements Command {
     }
 
     @Override
-    public String execute(String[] params, BufferedReader in, PrintWriter out) throws IOException {
+    public String execute(String[] params, BufferedReader in, PrintWriter out) throws IOException, InvalidInputException, DatabaseException, AuthenticationException, BusinessLogicException {
         if (params.length != 4) {
             return "INVALID_PASSWORD_CHANGE_FORMAT";
         }

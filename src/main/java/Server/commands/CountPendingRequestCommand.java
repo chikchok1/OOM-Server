@@ -9,6 +9,7 @@ package Server.commands;
  * @author YangJinWon
  */
 import java.io.*;
+import Server.exceptions.*;
 
 public class CountPendingRequestCommand implements Command {
 
@@ -19,7 +20,7 @@ public class CountPendingRequestCommand implements Command {
     }
 
     @Override
-    public String execute(String[] params, BufferedReader in, PrintWriter out) throws IOException {
+    public String execute(String[] params, BufferedReader in, PrintWriter out) throws IOException, InvalidInputException, DatabaseException, AuthenticationException, BusinessLogicException {
         File file = new File(BASE_DIR + "/ReservationRequest.txt");
         int count = 0;
 

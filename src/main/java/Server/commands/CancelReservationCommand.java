@@ -3,7 +3,7 @@ package Server.commands;
 import common.observer.ReservationNotification;
 import common.observer.ReservationSubject;
 import java.io.*;
-
+import Server.exceptions.*;
 public class CancelReservationCommand implements Command {
 
     private final String BASE_DIR;
@@ -15,7 +15,7 @@ public class CancelReservationCommand implements Command {
     }
 
     @Override
-    public String execute(String[] params, BufferedReader in, PrintWriter out) throws IOException {
+    public String execute(String[] params, BufferedReader in, PrintWriter out) throws IOException, InvalidInputException, DatabaseException, AuthenticationException, BusinessLogicException {
         // ✅ 8개 파라미터로 변경: CANCEL_RESERVATION,requesterId,userId,day,date,time,room,userName
         if (params.length != 8) {
             return "INVALID_CANCEL_FORMAT";

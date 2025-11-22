@@ -10,6 +10,7 @@ package Server.commands;
  */
 import Server.UserDAO;
 import java.io.*;
+import Server.exceptions.*;
 
 public class ViewAllReservationsCommand implements Command {
     private final String BASE_DIR;
@@ -23,7 +24,7 @@ public class ViewAllReservationsCommand implements Command {
     }
 
     @Override
-    public String execute(String[] params, BufferedReader in, PrintWriter out) throws IOException {
+    public String execute(String[] params, BufferedReader in, PrintWriter out) throws IOException, InvalidInputException, DatabaseException, AuthenticationException, BusinessLogicException {
         System.out.println("VIEW_ALL_RESERVATIONS - 권한 확인 userId: " + currentUserId);
         
         if (currentUserId == null || !userDAO.authorizeAccess(currentUserId)) {

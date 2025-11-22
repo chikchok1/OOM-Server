@@ -4,6 +4,7 @@ import Server.UserDAO;
 import common.observer.ReservationNotification;
 import common.observer.ReservationSubject;
 import java.io.*;
+import Server.exceptions.*;
 
 public class RejectReservationCommand implements Command {
     private final String BASE_DIR;
@@ -19,7 +20,7 @@ public class RejectReservationCommand implements Command {
     }
 
     @Override
-    public String execute(String[] params, BufferedReader in, PrintWriter out) throws IOException {
+    public String execute(String[] params, BufferedReader in, PrintWriter out) throws IOException, InvalidInputException, DatabaseException, AuthenticationException, BusinessLogicException {
         if (params.length != 7) {
             System.err.println("[ERROR] REJECT_RESERVATION 파라미터 개수 오류: " + params.length);
             return "INVALID_REJECT_FORMAT";

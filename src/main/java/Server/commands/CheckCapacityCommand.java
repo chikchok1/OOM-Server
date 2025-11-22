@@ -3,7 +3,7 @@ package Server.commands;
 import Server.manager.ServerClassroomManager;
 import common.dto.ClassroomDTO;
 import java.io.*;
-
+import Server.exceptions.*;
 /**
  * 수용 인원 체크 명령어 (50% 제한 적용)
  * 형식: CHECK_CAPACITY,강의실명,요청인원
@@ -12,7 +12,7 @@ import java.io.*;
 public class CheckCapacityCommand implements Command {
     
     @Override
-    public String execute(String[] parts, BufferedReader in, PrintWriter out) throws IOException {
+    public String execute(String[] parts, BufferedReader in, PrintWriter out) throws IOException, InvalidInputException, DatabaseException, AuthenticationException, BusinessLogicException {
         try {
             if (parts.length < 3) {
                 out.println("ERROR:잘못된 요청 형식");

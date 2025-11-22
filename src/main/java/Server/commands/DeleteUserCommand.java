@@ -1,16 +1,12 @@
-/*
- * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
- * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
- */
 package Server.commands;
 
-/**
- *
- * @author YangJinWon
- */
 import Server.UserDAO;
+import Server.exceptions.*;
 import java.io.*;
 
+/**
+ * 사용자 삭제 명령 (Exception Handling 적용)
+ */
 public class DeleteUserCommand implements Command {
 
     private final String BASE_DIR;
@@ -26,66 +22,140 @@ public class DeleteUserCommand implements Command {
     }
 
     @Override
-    public String execute(String[] params, BufferedReader in, PrintWriter out) throws IOException {
-        if (params.length != 2) {
-            System.err.println("[ERROR] DELETE_USER 파라미터 개수 오류: " + params.length);
-            return "INVALID_DELETE_FORMAT";
-        }
+    public String execute(String[] params, BufferedReader in, PrintWriter out) 
+            throws IOException, InvalidInputException, DatabaseException, 
+                   AuthenticationException, BusinessLogicException {
+        
+        // 1. 입력 검증
+        validateInput(params);
 
-        //  수정: currentUserId로 권한 확인
-        System.out.println("[DEBUG] DELETE_USER - 권한 확인 userId: " + currentUserId);
+        System.out.println("DELETE_USER - 권한 확인 userId: " + currentUserId);
 
-        if (currentUserId == null || !userDAO.authorizeAccess(currentUserId)) {
-            System.err.println("[ERROR] 권한 없음: " + currentUserId);
-            return "ACCESS_DENIED";
-        }
+        // 2. 권한 확인
+        checkPermission();
 
         String targetUserId = params[1].trim();
-        System.out.println("[DEBUG] 삭제 대상: " + targetUserId);
+        System.out.println("삭제 대상: " + targetUserId);
 
+        // 3. 사용자 삭제
         synchronized (FILE_LOCK) {
-            boolean result = deleteUserById(targetUserId);
-            return result ? "DELETE_SUCCESS" : "DELETE_FAILED";
+            deleteUserById(targetUserId);
+            return "DELETE_SUCCESS";
         }
     }
 
-    private boolean deleteUserById(String userId) {
+    /**
+     * 입력 검증
+     */
+    private void validateInput(String[] params) throws InvalidInputException {
+        if (params.length != 2) {
+            throw new InvalidInputException(
+                    "DELETE_USER 명령은 2개의 매개변수가 필요합니다 (현재: " + params.length + "개)"
+            );
+        }
+
+        String targetUserId = params[1];
+        if (targetUserId == null || targetUserId.trim().isEmpty()) {
+            throw new InvalidInputException("targetUserId", targetUserId, 
+                    "삭제할 사용자 ID를 입력해주세요");
+        }
+    }
+
+    /**
+     * 권한 확인
+     */
+    private void checkPermission() throws AuthenticationException {
+        if (currentUserId == null || !userDAO.authorizeAccess(currentUserId)) {
+            throw new AuthenticationException(
+                    AuthenticationException.AuthFailureReason.INSUFFICIENT_PERMISSION,
+                    "관리자 권한이 필요합니다"
+            );
+        }
+    }
+
+    /**
+     * 사용자 삭제
+     */
+    private void deleteUserById(String userId) throws DatabaseException, BusinessLogicException, InvalidInputException {
         String filePath = getUserFileById(userId);
         if (filePath == null) {
-            return false;
+            throw new InvalidInputException("userId", userId, 
+                    "유효하지 않은 사용자 ID 형식입니다");
         }
 
         File inputFile = new File(filePath);
+        if (!inputFile.exists()) {
+            throw new DatabaseException(
+                    inputFile.getName(),
+                    DatabaseException.OperationType.READ,
+                    "사용자 파일을 찾을 수 없습니다"
+            );
+        }
+
         File tempFile = new File(filePath + ".tmp");
 
         boolean found = false;
-        try (BufferedReader reader = new BufferedReader(new FileReader(inputFile)); BufferedWriter writer = new BufferedWriter(new FileWriter(tempFile))) {
+        try (BufferedReader reader = new BufferedReader(new FileReader(inputFile));
+             BufferedWriter writer = new BufferedWriter(new FileWriter(tempFile))) {
 
             String line;
             while ((line = reader.readLine()) != null) {
                 String[] parts = line.split(",");
                 if (parts.length >= 2 && parts[1].trim().equals(userId)) {
                     found = true;
-                    System.out.println("[DEBUG] 사용자 삭제: " + line);
-                    continue;
+                    System.out.println("사용자 삭제: " + line);
+                    continue; // 이 줄은 쓰지 않음 (삭제)
                 }
                 writer.write(line);
                 writer.newLine();
             }
+
         } catch (IOException e) {
-            e.printStackTrace();
-            return false;
+            // 임시 파일 정리
+            if (tempFile.exists()) {
+                tempFile.delete();
+            }
+            throw new DatabaseException(
+                    inputFile.getName(),
+                    DatabaseException.OperationType.DELETE,
+                    "사용자 삭제 중 오류가 발생했습니다",
+                    e
+            );
         }
 
-        if (found) {
-            inputFile.delete();
-            return tempFile.renameTo(inputFile);
-        } else {
+        if (!found) {
+            // 사용자를 찾지 못함
             tempFile.delete();
-            return false;
+            throw new BusinessLogicException(
+                    BusinessLogicException.BusinessRuleViolation.RESERVATION_NOT_FOUND,
+                    "삭제할 사용자를 찾을 수 없습니다: " + userId
+            );
         }
+
+        // 원본 파일 삭제 및 임시 파일을 원본으로 변경
+        if (!inputFile.delete()) {
+            tempFile.delete();
+            throw new DatabaseException(
+                    inputFile.getName(),
+                    DatabaseException.OperationType.DELETE,
+                    "기존 파일을 삭제할 수 없습니다"
+            );
+        }
+
+        if (!tempFile.renameTo(inputFile)) {
+            throw new DatabaseException(
+                    tempFile.getName(),
+                    DatabaseException.OperationType.UPDATE,
+                    "파일 업데이트에 실패했습니다"
+            );
+        }
+
+        System.out.println("사용자 삭제 완료: " + userId);
     }
 
+    /**
+     * 사용자 ID로 파일 경로 결정
+     */
     private String getUserFileById(String userId) {
         if (userId == null) {
             return null;

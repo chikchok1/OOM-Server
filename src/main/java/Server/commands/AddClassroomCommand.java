@@ -2,14 +2,14 @@ package Server.commands;
 
 import Server.manager.ServerClassroomManager;
 import common.dto.ClassroomDTO;
-
+import Server.exceptions.*;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.PrintWriter;
 
 public class AddClassroomCommand implements Command {
     @Override
-    public String execute(String[] args, BufferedReader in, PrintWriter out) throws IOException {
+    public String execute(String[] args, BufferedReader in, PrintWriter out) throws IOException, InvalidInputException, DatabaseException, AuthenticationException, BusinessLogicException {
         try {
             // args: [ADD_CLASSROOM, roomName, type, capacity]
             if (args.length < 4) {

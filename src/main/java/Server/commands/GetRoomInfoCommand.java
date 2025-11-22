@@ -3,14 +3,14 @@ package Server.commands;
 import Server.manager.ServerClassroomManager;
 import common.dto.ClassroomDTO;
 import java.io.*;
-
+import Server.exceptions.*;
 /**
  * 특정 강의실 정보 반환
  */
 public class GetRoomInfoCommand implements Command {
     
     @Override
-    public String execute(String[] params, BufferedReader in, PrintWriter out) throws IOException {
+    public String execute(String[] params, BufferedReader in, PrintWriter out) throws IOException, InvalidInputException, DatabaseException, AuthenticationException, BusinessLogicException {
         if (params.length < 2) {
             return "ERROR:INVALID_FORMAT";
         }
