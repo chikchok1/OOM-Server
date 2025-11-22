@@ -6,6 +6,9 @@ import java.io.*;
 import java.net.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
+import Server.exceptions.*;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 public class LoginServer {
 
@@ -17,7 +20,7 @@ public class LoginServer {
     private static final Object FILE_LOCK = new Object();
     private static final String BASE_DIR = System.getProperty("user.dir") + File.separator + "data";
     private static final String ROOM_STATUS_FILE = BASE_DIR + File.separator + "RoomStatus.txt";
-    
+
     private static CommandFactory commandFactory;
     private static UserDAO userDAO;
 
@@ -28,22 +31,23 @@ public class LoginServer {
         System.out.println("RoomStatus 파일 경로: " + ROOM_STATUS_FILE);
 
         userDAO = new UserDAO();
-        
+
         // CommandFactory 초기화
         commandFactory = new CommandFactory(
-            userDAO, 
-            BASE_DIR, 
-            FILE_LOCK,
-            loggedInUsers,
-            currentClients,
-            MAX_CLIENTS
+                userDAO,
+                BASE_DIR,
+                FILE_LOCK,
+                loggedInUsers,
+                currentClients,
+                MAX_CLIENTS
         );
-        
+
         // ✅ ReservationSubject에 오프라인 알림 관리자 초기화
-        common.observer.ReservationSubject subject = 
-            common.observer.ReservationSubject.getInstance();
+        common.observer.ReservationSubject subject
+                = common.observer.ReservationSubject.getInstance();
         subject.initializeOfflineManager(BASE_DIR);
         System.out.println("[서버 초기화] 오프라인 알림 관리자 설정 완료");
+        System.out.println("[서버 초기화] CommandInvoker를 통한 예외 처리 활성화");
 
         try {
             logServerStart();
@@ -67,21 +71,30 @@ public class LoginServer {
                         userId = handleClient(socket);
                     } catch (IOException e) {
                         System.err.println("클라이언트 처리 중 IOException: " + e.getMessage());
+                    } catch (InvalidInputException ex) {
+                        Logger.getLogger(LoginServer.class.getName()).log(Level.SEVERE, null, ex);
+                    } catch (DatabaseException ex) {
+                        Logger.getLogger(LoginServer.class.getName()).log(Level.SEVERE, null, ex);
+                    } catch (AuthenticationException ex) {
+                        Logger.getLogger(LoginServer.class.getName()).log(Level.SEVERE, null, ex);
+                    } catch (BusinessLogicException ex) {
+                        Logger.getLogger(LoginServer.class.getName()).log(Level.SEVERE, null, ex);
                     } finally {
                         if (userId != null) {
-                        synchronized (LoginServer.class) {
-                            loggedInUsers.remove(userId);
-                            currentClients.decrementAndGet();
-                            System.out.println(userId + " 로그아웃 처리됨");
-                            System.out.println("현재 로그인 중인 사용자: " + loggedInUsers.keySet());
-                            System.out.println("현재 접속자 수: " + currentClients.get());
-                        }
+                            synchronized (LoginServer.class) {
+                                loggedInUsers.remove(userId);
+                                currentClients.decrementAndGet();
+                                System.out.println(userId + " 로그아웃 처리됨");
+                                System.out.println("현재 로그인 중인 사용자: " + loggedInUsers.keySet());
+                                System.out.println("현재 접속자 수: " + currentClients.get());
+                            }
                         }
                         try {
                             if (socket != null && !socket.isClosed()) {
                                 socket.close();
                             }
-                        } catch (IOException ignored) {}
+                        } catch (IOException ignored) {
+                        }
                     }
                 }).start();
             }
@@ -93,27 +106,23 @@ public class LoginServer {
             if (serverSocket != null && !serverSocket.isClosed()) {
                 try {
                     serverSocket.close();
-                } catch (IOException ignored) {}
+                } catch (IOException ignored) {
+                }
             }
         }
     }
 
     /**
-     * 클라이언트 연결 처리 (Command 패턴 적용)
+     * 클라이언트 연결 처리 (CommandInvoker를 통한 중앙화된 예외 처리)
      */
-    // LoginServer.java의 handleClient 메소드 수정 부분
-
-    /**
-     * 클라이언트 연결 처리 (Command 패턴 적용 + Observer 등록)
-     */
-    private static String handleClient(Socket socket) throws IOException {
+    private static String handleClient(Socket socket) throws IOException, InvalidInputException, DatabaseException, AuthenticationException, BusinessLogicException {
         String loggedInUserId = null;
         PrintWriter out = null;
 
         try {
             BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
             out = new PrintWriter(socket.getOutputStream(), true);
-            
+
             String request = in.readLine();
             System.out.println("수신된 요청: " + request);
 
@@ -130,51 +139,56 @@ public class LoginServer {
                 return null;
             }
 
-            // Command 패턴 적용: 요청 문자열 → Command 객체 생성
+            // ✅ CommandInvoker 사용: 중앙화된 예외 처리
+            String[] params = request.split(",");
+            String commandName = params.length > 0 ? params[0] : "UNKNOWN";
+
+            CommandInvoker invoker = new CommandInvoker();
             Command command = commandFactory.createCommand(request);
-            
+
             if (command == null) {
-                out.println("UNKNOWN_COMMAND");
+                out.println("ERROR:UNKNOWN_COMMAND:알 수 없는 명령입니다");
                 out.flush();
                 return null;
             }
 
-            // Command 실행
-            String[] params = request.split(",");
-            String response = command.execute(params, in, out);
-            
-            // 일부 Command는 직접 출력하므로 null 반환 (ViewReservation 등)
+            // Command 설정 및 실행
+            invoker.setCommand(command, commandName);
+
+            //  예외가 발생해도 invoker가 알아서 처리하고 에러 응답 반환
+            String response = invoker.execute(params, in, out);
+
+            // 응답 전송 (null이 아닌 경우만)
             if (response != null) {
                 out.println(response);
                 out.flush();
             }
 
-            // 로그인 성공 시 세션 등록 및 Observer 등록
+            // 로그인 성공 시 세션 등록
             if (request.startsWith("LOGIN") && response != null && response.startsWith("SUCCESS")) {
                 loggedInUserId = params[1];
                 loggedInUsers.put(loggedInUserId, socket);
                 currentClients.incrementAndGet();
-                
-                //  Observer 패턴: 클라이언트를 Subject에 등록
-                common.observer.ReservationSubject subject = 
-                    common.observer.ReservationSubject.getInstance();
+
+                // Observer 패턴: 클라이언트 등록
+                common.observer.ReservationSubject subject
+                        = common.observer.ReservationSubject.getInstance();
                 subject.registerClient(loggedInUserId, out);
                 System.out.println("[Observer] " + loggedInUserId + " 클라이언트 알림 등록 완료");
-                
+
                 System.out.println(loggedInUserId + " 로그인 성공");
                 System.out.println("현재 로그인 중인 사용자: " + loggedInUsers.keySet());
                 System.out.println("현재 접속자 수: " + currentClients.get());
-                
-                // ✅ 로그인 후 저장된 오프라인 알림 전송
+
+                // 오프라인 알림 전송
                 OfflineNotificationHelper.sendOfflineNotifications(loggedInUserId, out);
-                
+
                 // 로그인 후 후속 메시지 처리
                 handleSubsequentMessages(in, out, loggedInUserId);
             }
 
-            // REGISTER 명령 처리 (로그인과 별도)
+            // REGISTER 명령 처리
             if (request.startsWith("REGISTER") && response != null) {
-                // 회원가입은 별도 세션 없이 응답만 전송
                 System.out.println("회원가입 처리 완료: " + response);
             }
 
@@ -182,10 +196,10 @@ public class LoginServer {
             System.err.println("클라이언트 처리 중 오류: " + e.getMessage());
             throw e;
         } finally {
-            //  Observer 패턴: 로그아웃 시 Subject에서 제거
+            // Observer 패턴: 로그아웃 시 제거
             if (loggedInUserId != null && out != null) {
-                common.observer.ReservationSubject subject = 
-                    common.observer.ReservationSubject.getInstance();
+                common.observer.ReservationSubject subject
+                        = common.observer.ReservationSubject.getInstance();
                 subject.unregisterClient(loggedInUserId, out);
                 System.out.println("[Observer] " + loggedInUserId + " 클라이언트 알림 등록 해제");
             }
@@ -195,13 +209,13 @@ public class LoginServer {
     }
 
     /**
-     * 로그인 후 후속 메시지 처리 (Command 패턴 적용)
+     * 로그인 후 후속 메시지 처리 (CommandInvoker 사용)
      */
-    private static void handleSubsequentMessages(BufferedReader in, PrintWriter out, String userId) 
-            throws IOException {
+    private static void handleSubsequentMessages(BufferedReader in, PrintWriter out, String userId)
+            throws IOException, InvalidInputException, DatabaseException, AuthenticationException, BusinessLogicException {
         while (true) {
             String request = in.readLine();
-            
+
             // 연결 종료 또는 로그아웃
             if (request == null || request.equalsIgnoreCase("EXIT")) {
                 out.println("LOGOUT_SUCCESS");
@@ -210,7 +224,7 @@ public class LoginServer {
                 break;
             }
 
-            // INIT 메시지 무시 (연결 확인용)
+            // INIT 메시지 무시
             if (request.equals("INIT")) {
                 System.out.println("[" + userId + "] INIT 메시지 수신 (연결 확인)");
                 continue;
@@ -218,27 +232,33 @@ public class LoginServer {
 
             System.out.println("[" + userId + "] 후속 메시지 수신: " + request);
 
-            //  Command 패턴으로 모든 후속 메시지 처리
+            // ✅ CommandInvoker를 통한 명령 실행 및 예외 처리
+            String[] params = request.split(",");
+            String commandName = params.length > 0 ? params[0] : "UNKNOWN";
+
+            CommandInvoker invoker = new CommandInvoker();
             Command command = commandFactory.createCommand(request, userId);
-            
+
             if (command == null) {
-                out.println("UNKNOWN_COMMAND_AFTER_LOGIN");
+                out.println("ERROR:UNKNOWN_COMMAND:알 수 없는 명령입니다");
                 out.flush();
                 continue;
             }
 
             // Command 실행
-            String[] params = request.split(",");
-            String response = command.execute(params, in, out);
-            
-            // 일부 Command는 직접 출력하므로 null 반환
+            invoker.setCommand(command, commandName);
+
+            // 예외 처리는 invoker가 자동으로 수행
+            String response = invoker.execute(params, in, out);
+
+            // 응답 전송
             if (response != null) {
                 out.println(response);
                 out.flush();
             }
         }
     }
-    
+
     /**
      * 파일이 없으면 생성
      */
@@ -264,6 +284,7 @@ public class LoginServer {
             logWriter.println("서버가 실행되었습니다.");
             logWriter.println("시작 시간: " + new java.util.Date());
             logWriter.println("현재 작업 디렉토리: " + System.getProperty("user.dir"));
+            logWriter.println("예외 처리: CommandInvoker 활성화");
             logWriter.println("=================================");
             logWriter.flush();
         } catch (IOException e) {
@@ -271,4 +292,3 @@ public class LoginServer {
         }
     }
 }
-

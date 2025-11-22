@@ -1,13 +1,5 @@
-/*
- * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
- * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
- */
 package Server.commands;
 
-/**
- *
- * @author YangJinWon
- */
 import Server.UserDAO;
 import Server.commands.*;
 import java.net.Socket;
@@ -106,6 +98,8 @@ public class CommandFactory {
                 new AddClassroomCommand();
             case "DELETE_CLASSROOM" ->
                 new DeleteClassroomCommand();
+            // TEST_ROLLBACK 명령은 테스트용으로 프로덕션에서 제거됨
+            // 테스트는 src/test/java에서 직접 실행
             default ->
                 null;
         };
