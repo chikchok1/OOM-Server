@@ -30,9 +30,25 @@ public class LoginServerTest {
     @BeforeAll
     void startServerAndPrepareFile() throws Exception {
         // 서버가 이미 실행 중인지 확인
+        boolean needStart = true;
         try (Socket testSocket = new Socket(HOST, PORT)) {
-            System.out.println("서버가 이미 실행 중입니다.");
+            System.out.println("서버가 이미 실행 중입니다. 종료 후 새로 시작합니다.");
+            // 기존 서버가 있으면 종료 명령을 보내고 재시작
+            try (PrintWriter pw = new PrintWriter(testSocket.getOutputStream(), true);
+                 BufferedReader br = new BufferedReader(new InputStreamReader(testSocket.getInputStream()))) {
+                pw.println("SHUTDOWN");
+                String resp = br.readLine();
+                System.out.println("기존 서버 응답(종료): " + resp);
+            } catch (Exception ex) {
+                System.out.println("기존 서버 종료 시도 중 오류: " + ex.getMessage());
+            }
+            needStart = true;
         } catch (IOException e) {
+            // 서버가 실행 중이지 않음 -> 시작 필요
+            needStart = true;
+        }
+
+        if (needStart) {
             // 서버 시작
             serverThread = new Thread(() -> {
                 try {
@@ -40,7 +56,7 @@ public class LoginServerTest {
                 } catch (Exception ignored) {}
             });
             serverThread.start();
-            Thread.sleep(1000); // 서버 준비 대기
+            Thread.sleep(1200); // 서버 준비 대기
         }
 
         // 테스트용 유저 파일 생성

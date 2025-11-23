@@ -32,14 +32,14 @@ public class LoginServer {
 
         userDAO = new UserDAO();
 
-        // CommandFactory 초기화
-        commandFactory = new CommandFactory(
-                userDAO,
-                BASE_DIR,
-                FILE_LOCK,
-                loggedInUsers,
-                currentClients,
-                MAX_CLIENTS
+        // CommandFactory 초기화 (Factory Method 패턴 적용: DefaultCommandFactory 사용)
+        commandFactory = new DefaultCommandFactory(
+            userDAO,
+            BASE_DIR,
+            FILE_LOCK,
+            loggedInUsers,
+            currentClients,
+            MAX_CLIENTS
         );
 
         // ✅ ReservationSubject에 오프라인 알림 관리자 초기화
