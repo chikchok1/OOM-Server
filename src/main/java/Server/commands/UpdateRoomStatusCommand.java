@@ -12,6 +12,7 @@ import Server.UserDAO;
 import java.io.*;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import Server.exceptions.*;
 
 public class UpdateRoomStatusCommand implements Command {
     private final String BASE_DIR;
@@ -27,7 +28,7 @@ public class UpdateRoomStatusCommand implements Command {
     }
 
     @Override
-    public String execute(String[] params, BufferedReader in, PrintWriter out) throws IOException {
+    public String execute(String[] params, BufferedReader in, PrintWriter out) throws IOException, InvalidInputException, DatabaseException, AuthenticationException, BusinessLogicException {
         if (params.length != 3) {
             return "INVALID_UPDATE_FORMAT";
         }
@@ -49,7 +50,7 @@ public class UpdateRoomStatusCommand implements Command {
         }
     }
 
-    private void updateRoomStatusFile(String roomNumber, String newStatus) throws IOException {
+    private void updateRoomStatusFile(String roomNumber, String newStatus) throws IOException, InvalidInputException, DatabaseException, AuthenticationException, BusinessLogicException {
         Map<String, String> roomStatusMap = new LinkedHashMap<>();
         File statusFile = new File(ROOM_STATUS_FILE);
 

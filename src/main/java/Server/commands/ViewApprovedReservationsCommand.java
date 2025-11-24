@@ -2,6 +2,7 @@ package Server.commands;
 
 import Server.UserDAO;
 import java.io.*;
+import Server.exceptions.*;
 
 public class ViewApprovedReservationsCommand implements Command {
 
@@ -16,7 +17,7 @@ public class ViewApprovedReservationsCommand implements Command {
     }
 
     @Override
-    public String execute(String[] params, BufferedReader in, PrintWriter out) throws IOException {
+    public String execute(String[] params, BufferedReader in, PrintWriter out) throws IOException, InvalidInputException, DatabaseException, AuthenticationException, BusinessLogicException {
         // ✅ currentUserId 사용 (클라이언트가 보낸 userId 무시)
         String userId = currentUserId;
         

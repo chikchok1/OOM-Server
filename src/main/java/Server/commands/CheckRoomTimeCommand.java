@@ -9,6 +9,7 @@ package Server.commands;
  * @author YangJinWon
  */
 import java.io.*;
+import Server.exceptions.*;
 
 public class CheckRoomTimeCommand implements Command {
     private final String BASE_DIR;
@@ -20,7 +21,7 @@ public class CheckRoomTimeCommand implements Command {
     }
 
     @Override
-    public String execute(String[] params, BufferedReader in, PrintWriter out) throws IOException {
+    public String execute(String[] params, BufferedReader in, PrintWriter out) throws IOException, InvalidInputException, DatabaseException, AuthenticationException, BusinessLogicException {
         if (params.length != 4) {
             return "INVALID_CHECK_FORMAT";
         }

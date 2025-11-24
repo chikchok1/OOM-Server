@@ -1,8 +1,9 @@
 package Server.commands;
 
-import common.manager.ClassroomManager;
+import Server.manager.ServerClassroomManager;
+import common.dto.ClassroomDTO;
 import java.io.*;
-
+import Server.exceptions.*;
 /**
  * 수용 인원 체크 명령어 (50% 제한 적용)
  * 형식: CHECK_CAPACITY,강의실명,요청인원
@@ -11,7 +12,7 @@ import java.io.*;
 public class CheckCapacityCommand implements Command {
     
     @Override
-    public String execute(String[] parts, BufferedReader in, PrintWriter out) throws IOException {
+    public String execute(String[] parts, BufferedReader in, PrintWriter out) throws IOException, InvalidInputException, DatabaseException, AuthenticationException, BusinessLogicException {
         try {
             if (parts.length < 3) {
                 out.println("ERROR:잘못된 요청 형식");
@@ -22,7 +23,7 @@ public class CheckCapacityCommand implements Command {
             String roomName = parts[1].trim();
             int requestedCount = Integer.parseInt(parts[2].trim());
             
-            ClassroomManager manager = ClassroomManager.getInstance();
+            ServerClassroomManager manager = ServerClassroomManager.getInstance();
             
             // 강의실 존재 여부 확인
             if (!manager.exists(roomName)) {
@@ -40,7 +41,7 @@ public class CheckCapacityCommand implements Command {
                 out.flush();
                 System.out.println(String.format("[CheckCapacityCommand] %s: %d명 예약 가능", roomName, requestedCount));
             } else {
-                ClassroomManager.Classroom classroom = manager.getClassroom(roomName);
+                ClassroomDTO classroom = manager.getClassroom(roomName);
                 int allowedCapacity = classroom.getAllowedCapacity();
                 out.println("CAPACITY_EXCEEDED:" + allowedCapacity);
                 out.flush();

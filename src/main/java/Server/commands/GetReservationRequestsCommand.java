@@ -10,7 +10,7 @@ package Server.commands;
  */
 import Server.UserDAO;
 import java.io.*;
-
+import Server.exceptions.*;
 public class GetReservationRequestsCommand implements Command {
 
     private final String BASE_DIR;
@@ -25,7 +25,7 @@ public class GetReservationRequestsCommand implements Command {
     }
 
     @Override
-    public String execute(String[] params, BufferedReader in, PrintWriter out) throws IOException {
+    public String execute(String[] params, BufferedReader in, PrintWriter out) throws IOException, InvalidInputException, DatabaseException, AuthenticationException, BusinessLogicException {
         // 파라미터에서 userId를 가져오거나, 없으면 currentUserId 사용
         String userId = params.length > 1 ? params[1] : currentUserId;
         

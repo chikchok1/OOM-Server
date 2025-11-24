@@ -1,9 +1,9 @@
 package Server.commands;
 
 import java.io.*;
-
+import Server.exceptions.*;
 /**
- * ✅ 특정 강의실, 날짜, 시간에 예약된 총 인원 수를 계산
+ *  특정 강의실, 날짜, 시간에 예약된 총 인원 수를 계산
  */
 public class GetReservedCountByDateCommand implements Command {
 
@@ -14,7 +14,7 @@ public class GetReservedCountByDateCommand implements Command {
     }
 
     @Override
-    public String execute(String[] params, BufferedReader in, PrintWriter out) throws IOException {
+    public String execute(String[] params, BufferedReader in, PrintWriter out) throws IOException, InvalidInputException, DatabaseException, AuthenticationException, BusinessLogicException {
         // 형식: GET_RESERVED_COUNT_BY_DATE,room,dateString,time
         if (params.length != 4) {
             out.println("INVALID_FORMAT");

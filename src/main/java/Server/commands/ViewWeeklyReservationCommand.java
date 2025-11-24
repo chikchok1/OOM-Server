@@ -1,6 +1,7 @@
 package Server.commands;
 
 import java.io.*;
+import Server.exceptions.*;
 
 public class ViewWeeklyReservationCommand implements Command {
     private final String BASE_DIR;
@@ -12,7 +13,7 @@ public class ViewWeeklyReservationCommand implements Command {
     }
 
     @Override
-    public String execute(String[] params, BufferedReader in, PrintWriter out) throws IOException {
+    public String execute(String[] params, BufferedReader in, PrintWriter out) throws IOException, InvalidInputException, DatabaseException, AuthenticationException, BusinessLogicException {
         if (params.length != 4) {
             out.println("INVALID_VIEW_FORMAT");
             out.println("END_OF_RESERVATION");

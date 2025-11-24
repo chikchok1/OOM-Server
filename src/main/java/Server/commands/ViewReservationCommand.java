@@ -9,6 +9,7 @@ package Server.commands;
  * @author YangJinWon
  */
 import java.io.*;
+import Server.exceptions.*;
 
 public class ViewReservationCommand implements Command {
 
@@ -21,10 +22,11 @@ public class ViewReservationCommand implements Command {
     }
 
     @Override
-    public String execute(String[] params, BufferedReader in, PrintWriter out) throws IOException {
-        // ✅ 날짜 범위 파라미터 추가
+
+    public String execute(String[] params, BufferedReader in, PrintWriter out) throws IOException, InvalidInputException, DatabaseException, AuthenticationException, BusinessLogicException {
         boolean hasDateRange = params.length == 5;
         if (params.length != 3 && params.length != 5) {
+
             return "INVALID_VIEW_FORMAT";
         }
 

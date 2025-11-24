@@ -9,8 +9,9 @@ package Server.commands;
  * @author YangJinWon
  */
 import Server.UserDAO;
-import common.manager.ClassroomManager;
+import Server.manager.ServerClassroomManager;
 import java.io.*;
+import Server.exceptions.*;
 
 public class UpdateRoomCapacityCommand implements Command {
     private final UserDAO userDAO;
@@ -22,7 +23,7 @@ public class UpdateRoomCapacityCommand implements Command {
     }
 
     @Override
-    public String execute(String[] params, BufferedReader in, PrintWriter out) throws IOException {
+    public String execute(String[] params, BufferedReader in, PrintWriter out) throws IOException, InvalidInputException, DatabaseException, AuthenticationException, BusinessLogicException {
         // 형식: UPDATE_ROOM_CAPACITY,강의실명,새용량
         if (params.length != 3) {
             return "INVALID_FORMAT";
@@ -45,8 +46,8 @@ public class UpdateRoomCapacityCommand implements Command {
             return "INVALID_CAPACITY";
         }
 
-        // ClassroomManager를 통해 수용인원 변경
-        ClassroomManager manager = ClassroomManager.getInstance();
+        // ServerClassroomManager를 통해 수용인원 변경
+        ServerClassroomManager manager = ServerClassroomManager.getInstance();
         
         if (!manager.exists(roomName)) {
             return "ROOM_NOT_FOUND";
