@@ -22,13 +22,22 @@ public class ViewReservationCommand implements Command {
     }
 
     @Override
+
     public String execute(String[] params, BufferedReader in, PrintWriter out) throws IOException, InvalidInputException, DatabaseException, AuthenticationException, BusinessLogicException {
-        if (params.length != 3) {
+        boolean hasDateRange = params.length == 5;
+        if (params.length != 3 && params.length != 5) {
+
             return "INVALID_VIEW_FORMAT";
         }
 
         String requesterId = params[1].trim();
         String roomName = params[2].trim();
+        
+        String weekStart = hasDateRange ? params[3].trim() : null;
+        String weekEnd = hasDateRange ? params[4].trim() : null;
+        
+        System.out.println("[ViewReservation] 요청: room=" + roomName + 
+            (hasDateRange ? ", 기간: " + weekStart + " ~ " + weekEnd : ""));
 
         synchronized (FILE_LOCK) {
             String file1 = BASE_DIR + "/ReserveClass.txt";
@@ -57,6 +66,20 @@ public class ViewReservationCommand implements Command {
                                     && !(fileRoom + "호").equals(roomName)) {
                                 continue;
                             }
+                            
+                            // ✅ 날짜 필터링 (주간 범위가 지정된 경우)
+                            if (hasDateRange && tokens.length >= 3) {
+                                try {
+                                    String reservationDate = tokens[2].trim();
+                                    if (reservationDate.compareTo(weekStart) < 0 || 
+                                        reservationDate.compareTo(weekEnd) > 0) {
+                                        continue; // 범위 밖 예약은 제외
+                                    }
+                                } catch (Exception e) {
+                                    System.err.println("[날짜 파싱 오류] " + tokens[2]);
+                                }
+                            }
+                            
                             out.println(line);
                         }
                     }
@@ -79,6 +102,20 @@ public class ViewReservationCommand implements Command {
                                     && !(fileRoom + "호").equals(roomName)) {
                                 continue;
                             }
+                            
+                            // ✅ 날짜 필터링 (주간 범위가 지정된 경우)
+                            if (hasDateRange && tokens.length >= 3) {
+                                try {
+                                    String reservationDate = tokens[2].trim();
+                                    if (reservationDate.compareTo(weekStart) < 0 || 
+                                        reservationDate.compareTo(weekEnd) > 0) {
+                                        continue; // 범위 밖 예약은 제외
+                                    }
+                                } catch (Exception e) {
+                                    System.err.println("[날짜 파싱 오류] " + tokens[2]);
+                                }
+                            }
+                            
                             out.println(line);
                         }
                     }
