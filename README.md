@@ -337,8 +337,8 @@ NEW_COMMAND,param1,param2
 
 ## 🔗 관련 프로젝트
 
-- [OOM-Client](../OOM-Client) - Swing GUI 클라이언트
-- [OOM-Common](../OOM-Common) - 공통 라이브러리
+- [OOM-Client](https://github.com/chikchok1/OOM-Client) - Swing GUI 클라이언트
+- [OOM-Common](https://github.com/chikchok1/OOM-Common) - 공통 라이브러리
 
 ---
 
