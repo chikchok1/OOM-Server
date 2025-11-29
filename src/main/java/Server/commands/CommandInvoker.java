@@ -46,8 +46,15 @@ public class CommandInvoker {
         }
 
         try {
+            // 명령 실행 로그
+            System.out.println("[CommandInvoker] 명령 실행: " + commandName);
+            
             // 명령 실행
             String result = command.execute(params, in, out);
+            
+            // 성공 로그
+            System.out.println("[CommandInvoker] 실행 성공: " + commandName);
+            
             return result;
 
         } catch (InvalidInputException e) {

@@ -36,6 +36,8 @@ public class LoginCommand implements Command {
     public String execute(String[] params, BufferedReader in, PrintWriter out)
             throws InvalidInputException, AuthenticationException, DatabaseException {
         
+                System.out.println("[Command] LoginCommand 실행 시작");
+
         // 1. 입력 검증
         validateInput(params);
         
@@ -58,6 +60,8 @@ public class LoginCommand implements Command {
             String name = getUserName(userId);
 
             System.out.println(userId + " 로그인 성공");
+
+                    System.out.println("[Command] LoginCommand 실행 완료");
 
             // 6. 성공 응답
             return "SUCCESS," + name;

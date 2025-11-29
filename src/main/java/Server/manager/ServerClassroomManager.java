@@ -25,6 +25,9 @@ public class ServerClassroomManager {
         classrooms = new HashMap<>();
         classroomNames = new ArrayList<>();
         labNames = new ArrayList<>();
+        
+            System.out.println("[싱글톤] ServerClassroomManager 인스턴스 생성: " + this.hashCode());
+
         loadClassroomData();
     }
     
@@ -33,9 +36,12 @@ public class ServerClassroomManager {
             synchronized (ServerClassroomManager.class) {
                 if (instance == null) {
                     instance = new ServerClassroomManager();
-                }
+                }   
             }
         }
+        
+            System.out.println("[싱글톤] getInstance() 호출 - 인스턴스: " + instance.hashCode());
+
         return instance;
     }
     
