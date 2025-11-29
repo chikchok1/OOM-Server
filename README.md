@@ -42,9 +42,9 @@ TCP/IP 소켓 통신을 통해 여러 클라이언트의 요청을 동시에 처
 | 조회        | 6개        | ViewReservationCommand, ViewMyReservationsCommand, ViewWeeklyReservationCommand |
 | 강의실 관리 | 7개        | AddClassroomCommand, DeleteClassroomCommand, UpdateRoomCapacityCommand          |
 | 사용자 관리 | 3개        | GetAllUsersCommand, UpdateUserCommand, DeleteUserCommand                        |
-| 통계        | 7개        | GetReservationRequestsCommand, CountPendingRequestCommand                       |
+| 통계        | 5개        | GetReservationRequestsCommand, CountPendingRequestCommand                       |
 
-**총 33개 Command 구현**
+**총 31개 Command 구현**
 
 ### 2. Factory Method Pattern
 
